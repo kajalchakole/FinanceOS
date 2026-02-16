@@ -1,2 +1,5 @@
-// Ledger, holdings, and core domain engines live here.
-module.exports = {};
+const ledgerService = require('./ledger.service');
+
+module.exports = {
+  ledgerService
+};
