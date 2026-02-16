@@ -12,6 +12,8 @@ const ledgerTransactionSchema = new mongoose.Schema(
     quantity: { type: Number, required: true, min: 0.000001 },
     price: { type: Number, default: 0 },
     charges: { type: Number, default: 0 },
+    instrumentType: { type: String, trim: true, default: 'UNKNOWN' },
+    broker: { type: String, trim: true, default: 'UNKNOWN' },
     transactionDate: { type: Date, required: true, index: true }
   },
   {
