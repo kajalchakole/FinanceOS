@@ -134,6 +134,7 @@ async function computePositions(priceService = defaultPriceService) {
       positionMap.set(isin, {
         isin,
         symbol,
+        instrumentType: transaction.instrumentType || 'UNKNOWN',
         totalBuyQty: 0,
         totalSellQty: 0,
         totalInvestedValue: 0,
@@ -162,6 +163,7 @@ async function computePositions(priceService = defaultPriceService) {
     return {
       isin: position.isin,
       symbol: position.symbol,
+      instrumentType: position.instrumentType,
       remainingQty,
       avgCost,
       totalInvestedValue: position.totalInvestedValue,
@@ -173,7 +175,11 @@ async function computePositions(priceService = defaultPriceService) {
 
   return Promise.all(
     basePositions.map(async (position) => {
-      const currentPrice = await priceService.getCurrentPrice(position.isin);
+      const currentPrice = await priceService.getCurrentPrice({
+        isin: position.isin,
+        symbol: position.symbol,
+        instrumentType: position.instrumentType
+      });
       const marketValue = position.remainingQty * currentPrice;
       const unrealizedPnL = (currentPrice - position.avgCost) * position.remainingQty;
 

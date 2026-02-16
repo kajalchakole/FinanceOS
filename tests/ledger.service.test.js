@@ -96,11 +96,18 @@ describe('ledger.service', () => {
 
     const positions = await computePositions(mockPriceService);
     expect(positions).toHaveLength(1);
-    expect(mockPriceService.getCurrentPrice).toHaveBeenCalledWith('INFY123');
+    expect(mockPriceService.getCurrentPrice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isin: 'INFY123',
+        symbol: 'INFY',
+        instrumentType: 'UNKNOWN'
+      })
+    );
     expect(positions[0]).toEqual(
       expect.objectContaining({
         isin: 'INFY123',
         symbol: 'INFY',
+        instrumentType: 'UNKNOWN',
         remainingQty: 10,
         avgCost: 100,
         totalInvestedValue: 2000,
@@ -173,7 +180,7 @@ describe('ledger.service', () => {
     ]);
 
     const mockPriceService = {
-      getCurrentPrice: jest.fn(async (isin) => {
+      getCurrentPrice: jest.fn(async ({ isin }) => {
         if (isin === 'INFY123') {
           return 130;
         }
@@ -193,6 +200,7 @@ describe('ledger.service', () => {
     expect(infy).toBeDefined();
     expect(infy.remainingQty).toBe(7);
     expect(infy.totalInvestedValue).toBe(1615);
+    expect(infy.instrumentType).toBe('UNKNOWN');
     expect(infy.avgCost).toBeCloseTo(1615 / 15, 5);
     expect(infy.currentPrice).toBe(130);
     expect(infy.marketValue).toBe(910);
