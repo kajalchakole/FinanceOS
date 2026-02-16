@@ -1,7 +1,8 @@
 const router = require('express').Router();
-const { importZerodhaCsv, importZerodhaHoldings } = require('../controllers/import.controller');
-const { uploadZerodhaCsv, uploadZerodhaHoldingsXlsx } = require('../middlewares/upload.middleware');
+const { importGroww, importZerodhaCsv, importZerodhaHoldings } = require('../controllers/import.controller');
+const { uploadSpreadsheet, uploadZerodhaCsv, uploadZerodhaHoldingsXlsx } = require('../middlewares/upload.middleware');
 
+router.post('/groww', uploadSpreadsheet, importGroww);
 router.post('/zerodha', uploadZerodhaCsv, importZerodhaCsv);
 router.post('/zerodha/holdings', uploadZerodhaHoldingsXlsx, importZerodhaHoldings);
 

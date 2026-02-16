@@ -82,6 +82,90 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Import Groww Stocks (Append)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/samples/Groww_Stocks_Holdings_Statement_16-02-2026.xlsx"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/import/groww?mode=append",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "import",
+                "groww?mode=append"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Import Groww MF (Append)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/samples/Groww_Mutual_Funds_17-02-2026_17-02-2026.xlsx"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/import/groww?mode=append",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "import",
+                "groww?mode=append"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Import Groww Stocks (Replace)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/samples/Groww_Stocks_Holdings_Statement_16-02-2026.xlsx"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/import/groww?mode=replace",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "import",
+                "groww?mode=replace"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },

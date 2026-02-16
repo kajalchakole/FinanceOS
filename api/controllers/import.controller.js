@@ -1,3 +1,4 @@
+const { GrowwAdapter } = require('../../adapters/csv/groww.adapter');
 const { ZerodhaAdapter } = require('../../adapters/csv/zerodha.adapter');
 const { ZerodhaHoldingsAdapter } = require('../../adapters/xlsx/zerodha-holdings.adapter');
 const { importService } = require('../../core');
@@ -16,6 +17,31 @@ async function importZerodhaCsv(req, res) {
   const summary = await importService.importTransactions({
     transactions: normalizedTransactions,
     broker: 'ZERODHA',
+    mode
+  });
+
+  res.status(200).json({
+    success: true,
+    deletedCount: summary.deletedCount,
+    imported: summary.importedCount,
+    failed: summary.failedCount
+  });
+}
+
+async function importGroww(req, res) {
+  if (!req.file) {
+    const error = new Error('XLSX file is required');
+    error.code = 'FILE_REQUIRED';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const adapter = new GrowwAdapter();
+  const normalizedTransactions = adapter.extractTransactions(req.file.buffer);
+  const mode = req.query.mode || 'replace';
+  const summary = await importService.importTransactions({
+    transactions: normalizedTransactions,
+    broker: 'GROWW',
     mode
   });
 
@@ -53,6 +79,7 @@ async function importZerodhaHoldings(req, res) {
 }
 
 module.exports = {
+  importGroww,
   importZerodhaCsv,
   importZerodhaHoldings
 };

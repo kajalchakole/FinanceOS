@@ -106,77 +106,19 @@ const path = require('path');
 const { createApp } = require('../app');
 const { ledgerService } = require('../core');
 
-describe('Zerodha CSV import integration', () => {
+describe('Groww import integration', () => {
   beforeEach(() => {
     ledgerService.__reset();
   });
 
-  test('POST /import/zerodha imports CSV rows and updates transactions and positions', async () => {
+  test('POST /import/groww imports stocks XLSX and updates transactions and positions', async () => {
     const app = createApp();
-    const csv = [
-      'Symbol,ISIN,Trade Date,Trade Type,Quantity,Price,Charges',
-      'INFY,INFY123,2026-02-10,BUY,10,1500,20',
-      'INFY,INFY123,2026-02-12,BUY,5,1600,10',
-      'INFY,INFY123,2026-02-15,SELL,3,1700,5'
-    ].join('\n');
+    const stocksFilePath = path.join(__dirname, '..', 'postman', 'samples', 'Groww_Stocks_Holdings_Statement_16-02-2026.xlsx');
+    const stocksBuffer = fs.readFileSync(stocksFilePath);
 
     const importResponse = await request(app)
-      .post('/import/zerodha')
-      .attach('file', Buffer.from(csv), 'zerodha.csv');
-
-    expect(importResponse.status).toBe(200);
-    expect(importResponse.body).toEqual({
-      success: true,
-      deletedCount: 0,
-      imported: 3,
-      failed: 0
-    });
-    expect(ledgerService.addTransaction).toHaveBeenCalledTimes(3);
-
-    const transactionsResponse = await request(app).get('/transactions');
-    expect(transactionsResponse.status).toBe(200);
-    expect(transactionsResponse.body.success).toBe(true);
-    expect(transactionsResponse.body.data).toHaveLength(3);
-    expect(transactionsResponse.body.data[0]).toEqual(
-      expect.objectContaining({
-        broker: 'ZERODHA',
-        instrumentType: 'EQUITY',
-        transactionType: 'BUY'
-      })
-    );
-
-    const positionsResponse = await request(app).get('/positions');
-    expect(positionsResponse.status).toBe(200);
-    expect(positionsResponse.body.success).toBe(true);
-    expect(positionsResponse.body.data).toHaveLength(1);
-    expect(positionsResponse.body.data[0]).toEqual(
-      expect.objectContaining({
-        isin: 'INFY123',
-        remainingQty: 12
-      })
-    );
-  });
-
-  test('POST /import/zerodha rejects non-csv upload', async () => {
-    const app = createApp();
-
-    const response = await request(app)
-      .post('/import/zerodha')
-      .attach('file', Buffer.from('not csv'), 'notes.txt');
-
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe('INVALID_FILE_TYPE');
-  });
-
-  test('POST /import/zerodha/holdings imports Zerodha holdings XLSX and updates positions', async () => {
-    const app = createApp();
-    const sampleFilePath = path.join(__dirname, '..', 'postman', 'samples', 'holdings-VPW659.xlsx');
-    const sampleBuffer = fs.readFileSync(sampleFilePath);
-
-    const importResponse = await request(app)
-      .post('/import/zerodha/holdings')
-      .attach('file', sampleBuffer, 'holdings-VPW659.xlsx');
+      .post('/import/groww?mode=append')
+      .attach('file', stocksBuffer, 'Groww_Stocks_Holdings_Statement_16-02-2026.xlsx');
 
     expect(importResponse.status).toBe(200);
     expect(importResponse.body.success).toBe(true);
@@ -186,52 +128,56 @@ describe('Zerodha CSV import integration', () => {
 
     const transactionsResponse = await request(app).get('/transactions');
     expect(transactionsResponse.status).toBe(200);
-    expect(transactionsResponse.body.success).toBe(true);
     expect(transactionsResponse.body.data.length).toBe(importResponse.body.imported);
     expect(transactionsResponse.body.data[0]).toEqual(
       expect.objectContaining({
-        broker: 'ZERODHA',
+        broker: 'GROWW',
         transactionType: 'BUY'
       })
     );
 
     const positionsResponse = await request(app).get('/positions');
     expect(positionsResponse.status).toBe(200);
-    expect(positionsResponse.body.success).toBe(true);
     expect(positionsResponse.body.data.length).toBeGreaterThan(0);
   });
 
-  test('holdings import append then replace deletes previous broker transactions', async () => {
+  test('POST /import/groww supports separate MF and Stocks files with replace mode', async () => {
     const app = createApp();
-    const sampleFilePath = path.join(__dirname, '..', 'postman', 'samples', 'holdings-VPW659.xlsx');
-    const sampleBuffer = fs.readFileSync(sampleFilePath);
+    const stocksFilePath = path.join(__dirname, '..', 'postman', 'samples', 'Groww_Stocks_Holdings_Statement_16-02-2026.xlsx');
+    const mfFilePath = path.join(__dirname, '..', 'postman', 'samples', 'Groww_Mutual_Funds_17-02-2026_17-02-2026.xlsx');
+    const stocksBuffer = fs.readFileSync(stocksFilePath);
+    const mfBuffer = fs.readFileSync(mfFilePath);
 
-    const appendResponse = await request(app)
-      .post('/import/zerodha/holdings?mode=append')
-      .attach('file', sampleBuffer, 'holdings-VPW659.xlsx');
+    const stocksAppendResponse = await request(app)
+      .post('/import/groww?mode=append')
+      .attach('file', stocksBuffer, 'Groww_Stocks_Holdings_Statement_16-02-2026.xlsx');
 
-    expect(appendResponse.status).toBe(200);
-    expect(appendResponse.body.success).toBe(true);
-    expect(appendResponse.body.deletedCount).toBe(0);
-    expect(appendResponse.body.imported).toBeGreaterThan(0);
+    expect(stocksAppendResponse.status).toBe(200);
+    expect(stocksAppendResponse.body.imported).toBeGreaterThan(0);
+
+    const mfAppendResponse = await request(app)
+      .post('/import/groww?mode=append')
+      .attach('file', mfBuffer, 'Groww_Mutual_Funds_17-02-2026_17-02-2026.xlsx');
+
+    expect(mfAppendResponse.status).toBe(200);
+    expect(mfAppendResponse.body.imported).toBeGreaterThan(0);
 
     const transactionsAfterAppend = await request(app).get('/transactions');
-    expect(transactionsAfterAppend.status).toBe(200);
     const appendCount = transactionsAfterAppend.body.data.length;
-    expect(appendCount).toBe(appendResponse.body.imported);
+    expect(appendCount).toBe(stocksAppendResponse.body.imported + mfAppendResponse.body.imported);
+    expect(
+      transactionsAfterAppend.body.data.some((txn) => txn.broker === 'GROWW' && txn.instrumentType === 'MF')
+    ).toBe(true);
 
     const replaceResponse = await request(app)
-      .post('/import/zerodha/holdings?mode=replace')
-      .attach('file', sampleBuffer, 'holdings-VPW659.xlsx');
+      .post('/import/groww?mode=replace')
+      .attach('file', stocksBuffer, 'Groww_Stocks_Holdings_Statement_16-02-2026.xlsx');
 
     expect(replaceResponse.status).toBe(200);
-    expect(replaceResponse.body.success).toBe(true);
     expect(replaceResponse.body.deletedCount).toBe(appendCount);
-    expect(replaceResponse.body.imported).toBeGreaterThan(0);
+    expect(replaceResponse.body.imported).toBe(stocksAppendResponse.body.imported);
 
     const transactionsAfterReplace = await request(app).get('/transactions');
-    expect(transactionsAfterReplace.status).toBe(200);
-    expect(transactionsAfterReplace.body.data.length).toBe(replaceResponse.body.imported);
+    expect(transactionsAfterReplace.body.data.length).toBe(stocksAppendResponse.body.imported);
   });
-
 });

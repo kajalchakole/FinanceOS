@@ -56,8 +56,10 @@ const uploadXlsx = multer({
   }
 });
 const uploadZerodhaHoldingsXlsx = uploadXlsx.single('file');
+const uploadSpreadsheet = uploadXlsx.single('file');
 
 module.exports = {
+  uploadSpreadsheet,
   uploadZerodhaCsv,
   uploadZerodhaHoldingsXlsx,
   MAX_FILE_SIZE_BYTES
