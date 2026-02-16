@@ -29,3 +29,6 @@ build/
 Thumbs.db
 .idea/
 .vscode/
+
+# Sample data files
+postman/samples/
