@@ -24,6 +24,68 @@
       "response": []
     },
     {
+      "name": "Import",
+      "item": [
+        {
+          "name": "Import Zerodha Holdings XLSX",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/samples/holdings-VPW659.xlsx"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/import/zerodha/holdings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "import",
+                "zerodha",
+                "holdings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Import Zerodha CSV",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/samples/zerodha-sample.csv"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/import/zerodha",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "import",
+                "zerodha"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Transactions",
       "item": [
         {

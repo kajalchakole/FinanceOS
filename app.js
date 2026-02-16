@@ -4,6 +4,7 @@ const express = require('express');
 const { httpLogger } = require('./api/middlewares/http-logger.middleware');
 const { notFoundHandler, globalErrorHandler } = require('./api/middlewares/error.middleware');
 const healthRoutes = require('./api/routes/health.routes');
+const importRoutes = require('./api/routes/import.routes');
 const transactionRoutes = require('./api/routes/transaction.routes');
 const portfolioRoutes = require('./api/routes/portfolio.routes');
 
@@ -14,6 +15,7 @@ function createApp() {
   app.use(express.json());
 
   app.use('/health', healthRoutes);
+  app.use('/import', importRoutes);
   app.use('/transactions', transactionRoutes);
   app.use('/', portfolioRoutes);
   app.use(notFoundHandler);

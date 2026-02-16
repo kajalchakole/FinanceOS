@@ -87,4 +87,26 @@ describe('Price providers and service', () => {
 
     expect(price).toBe(100);
   });
+
+  test('PriceService falls back to mock provider when provider throws', async () => {
+    const service = new PriceService({
+      mfProvider: { getNAV: jest.fn().mockRejectedValue(new Error('AMFI 503')) },
+      equityProvider: { getPrice: jest.fn().mockRejectedValue(new Error('Yahoo 401')) },
+      mockProvider: { getCurrentPrice: jest.fn().mockResolvedValue(100) }
+    });
+
+    const equityPrice = await service.getCurrentPrice({
+      isin: 'INFY123',
+      symbol: 'INFY.NS',
+      instrumentType: 'EQUITY'
+    });
+    const mfPrice = await service.getCurrentPrice({
+      isin: 'INF200K01264',
+      symbol: 'HDFC-MF',
+      instrumentType: 'MF'
+    });
+
+    expect(equityPrice).toBe(100);
+    expect(mfPrice).toBe(100);
+  });
 });

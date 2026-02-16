@@ -6,21 +6,30 @@ function notFoundHandler(req, res, next) {
 }
 
 function globalErrorHandler(error, req, res, _next) {
-  const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+  let statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
   const isProduction = process.env.NODE_ENV === 'production';
   const requestId = req.id || req.headers['x-request-id'] || 'unknown';
+  let mappedCode = error.code;
+  let mappedMessage = error.message || 'Unexpected error';
+
+  if (error.name === 'MulterError' && error.code === 'LIMIT_FILE_SIZE') {
+    statusCode = 400;
+    mappedCode = 'FILE_TOO_LARGE';
+    mappedMessage = 'File size exceeds 5MB limit';
+  }
+
   const safeMessage =
     statusCode >= 500 && isProduction
       ? 'Internal server error'
-      : error.message || 'Unexpected error';
+      : mappedMessage;
 
   const errorPayload = {
     message: safeMessage,
     requestId
   };
 
-  if (typeof error.code === 'string' && error.code) {
-    errorPayload.code = error.code;
+  if (typeof mappedCode === 'string' && mappedCode) {
+    errorPayload.code = mappedCode;
   }
 
   if (!isProduction && error.stack) {
@@ -32,7 +41,7 @@ function globalErrorHandler(error, req, res, _next) {
       {
         err: error,
         requestId,
-        code: errorPayload.code,
+        code: mappedCode,
         statusCode,
         path: req.originalUrl,
         method: req.method

@@ -67,12 +67,16 @@ class PriceService {
   }
 
   async resolveFromProvider({ isin, symbol, instrumentType }) {
-    if (instrumentType === 'MF') {
-      return this.mfProvider.getNAV(isin);
-    }
+    try {
+      if (instrumentType === 'MF') {
+        return await this.mfProvider.getNAV(isin);
+      }
 
-    if (instrumentType === 'EQUITY') {
-      return this.equityProvider.getPrice(symbol);
+      if (instrumentType === 'EQUITY') {
+        return await this.equityProvider.getPrice(symbol);
+      }
+    } catch (_error) {
+      return null;
     }
 
     return null;
