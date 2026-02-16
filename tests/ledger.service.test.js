@@ -90,8 +90,13 @@ describe('ledger.service', () => {
       }
     ]);
 
-    const positions = await computePositions();
+    const mockPriceService = {
+      getCurrentPrice: jest.fn().mockResolvedValue(150)
+    };
+
+    const positions = await computePositions(mockPriceService);
     expect(positions).toHaveLength(1);
+    expect(mockPriceService.getCurrentPrice).toHaveBeenCalledWith('INFY123');
     expect(positions[0]).toEqual(
       expect.objectContaining({
         isin: 'INFY123',
@@ -99,8 +104,9 @@ describe('ledger.service', () => {
         remainingQty: 10,
         avgCost: 100,
         totalInvestedValue: 2000,
-        currentPrice: null,
-        unrealizedPnL: null
+        currentPrice: 150,
+        marketValue: 1500,
+        unrealizedPnL: 500
       })
     );
   });
@@ -126,7 +132,7 @@ describe('ledger.service', () => {
     expect(LedgerTransaction.create).not.toHaveBeenCalled();
   });
 
-  test('computePositions returns weighted average results for grouped ISINs', async () => {
+  test('computePositions returns weighted average and valuation enrichment for grouped ISINs', async () => {
     mockFindResult([
       {
         isin: 'INFY123',
@@ -166,7 +172,21 @@ describe('ledger.service', () => {
       }
     ]);
 
-    const positions = await computePositions();
+    const mockPriceService = {
+      getCurrentPrice: jest.fn(async (isin) => {
+        if (isin === 'INFY123') {
+          return 130;
+        }
+
+        if (isin === 'TCS123') {
+          return 3200;
+        }
+
+        return 0;
+      })
+    };
+
+    const positions = await computePositions(mockPriceService);
     const infy = positions.find((item) => item.isin === 'INFY123');
     const tcs = positions.find((item) => item.isin === 'TCS123');
 
@@ -174,13 +194,18 @@ describe('ledger.service', () => {
     expect(infy.remainingQty).toBe(7);
     expect(infy.totalInvestedValue).toBe(1615);
     expect(infy.avgCost).toBeCloseTo(1615 / 15, 5);
-    expect(infy.currentPrice).toBeNull();
-    expect(infy.unrealizedPnL).toBeNull();
+    expect(infy.currentPrice).toBe(130);
+    expect(infy.marketValue).toBe(910);
+    expect(infy.unrealizedPnL).toBeCloseTo((130 - 1615 / 15) * 7, 5);
 
     expect(tcs).toBeDefined();
     expect(tcs.remainingQty).toBe(2);
     expect(tcs.totalInvestedValue).toBe(6020);
     expect(tcs.avgCost).toBe(3010);
+    expect(tcs.currentPrice).toBe(3200);
+    expect(tcs.marketValue).toBe(6400);
+    expect(tcs.unrealizedPnL).toBe(380);
+    expect(mockPriceService.getCurrentPrice).toHaveBeenCalledTimes(2);
   });
 
   test('getAllTransactions and getTransactionsByISIN query sorted by transactionDate asc', async () => {

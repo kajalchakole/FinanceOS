@@ -1,4 +1,5 @@
 const { LedgerTransaction } = require('../models');
+const { defaultPriceService } = require('../prices/price.service');
 
 const REQUIRED_FIELDS = ['isin', 'symbol', 'transactionType', 'quantity', 'transactionDate'];
 const SUPPORTED_TRANSACTION_TYPES = new Set(['BUY', 'SELL', 'DIVIDEND', 'SPLIT']);
@@ -117,7 +118,7 @@ function toNumber(value) {
   return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
-async function computePositions() {
+async function computePositions(priceService = defaultPriceService) {
   const transactions = await getAllTransactions();
   const positionMap = new Map();
 
@@ -154,7 +155,7 @@ async function computePositions() {
     }
   }
 
-  return Array.from(positionMap.values()).map((position) => {
+  const basePositions = Array.from(positionMap.values()).map((position) => {
     const remainingQty = position.totalBuyQty - position.totalSellQty;
     const avgCost = remainingQty > 0 && position.totalBuyQty > 0 ? position.totalInvestedValue / position.totalBuyQty : 0;
 
@@ -165,9 +166,25 @@ async function computePositions() {
       avgCost,
       totalInvestedValue: position.totalInvestedValue,
       currentPrice: null,
+      marketValue: null,
       unrealizedPnL: null
     };
   });
+
+  return Promise.all(
+    basePositions.map(async (position) => {
+      const currentPrice = await priceService.getCurrentPrice(position.isin);
+      const marketValue = position.remainingQty * currentPrice;
+      const unrealizedPnL = (currentPrice - position.avgCost) * position.remainingQty;
+
+      return {
+        ...position,
+        currentPrice,
+        marketValue,
+        unrealizedPnL
+      };
+    })
+  );
 }
 
 module.exports = {

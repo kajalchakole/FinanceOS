@@ -1,2 +1,7 @@
-// Price providers and pricing workflows live here.
-module.exports = {};
+const { PriceService, defaultPriceService, createMockPriceProvider } = require('./price.service');
+
+module.exports = {
+  PriceService,
+  defaultPriceService,
+  createMockPriceProvider
+};
