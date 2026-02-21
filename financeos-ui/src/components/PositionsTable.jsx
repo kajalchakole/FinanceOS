@@ -1,4 +1,6 @@
-const PositionsTable = ({ positions = [] }) => {
+const PositionsTable = ({ positions = [], loading = false }) => {
+  const skeletonRows = Array.from({ length: 6 });
+
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900 p-5">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Positions</h2>
@@ -14,20 +16,43 @@ const PositionsTable = ({ positions = [] }) => {
             </tr>
           </thead>
           <tbody>
-            {positions.map((position) => (
-              <tr key={position.symbol} className="border-b border-slate-800/70 text-slate-200">
-                <td className="py-3 font-medium">{position.symbol}</td>
-                <td className="py-3">{position.quantity}</td>
-                <td className="py-3">{position.avgPrice}</td>
-                <td className="py-3">{position.ltp}</td>
-                <td className={`py-3 ${String(position.pnl).startsWith("-") ? "text-rose-400" : "text-emerald-400"}`}>
-                  {position.pnl}
-                </td>
-              </tr>
-            ))}
+            {loading
+              ? skeletonRows.map((_, index) => (
+                  <tr key={`positions-skeleton-${index}`} className="border-b border-slate-800/70">
+                    <td className="py-3">
+                      <div className="h-4 w-20 animate-pulse rounded bg-slate-800" />
+                    </td>
+                    <td className="py-3">
+                      <div className="h-4 w-12 animate-pulse rounded bg-slate-800" />
+                    </td>
+                    <td className="py-3">
+                      <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+                    </td>
+                    <td className="py-3">
+                      <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+                    </td>
+                    <td className="py-3">
+                      <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+                    </td>
+                  </tr>
+                ))
+              : positions.map((position) => (
+                  <tr key={position.id || position.symbol} className="border-b border-slate-800/70 text-slate-200">
+                    <td className="py-3 font-medium">{position.symbol}</td>
+                    <td className="py-3">{position.quantity}</td>
+                    <td className="py-3">{position.avgPrice}</td>
+                    <td className="py-3">{position.ltp}</td>
+                    <td className={`py-3 ${String(position.pnl).startsWith("-") ? "text-rose-400" : "text-emerald-400"}`}>
+                      {position.pnl}
+                    </td>
+                  </tr>
+                ))}
           </tbody>
         </table>
       </div>
+      {!loading && positions.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-400">No positions found.</p>
+      ) : null}
     </section>
   );
 };
