@@ -13,13 +13,13 @@ const quantityFormatter = new Intl.NumberFormat("en-IN", {
 });
 
 const columns = [
-  { key: "instrumentName", label: "Instrument Name", sortable: true, align: "left" },
-  { key: "type", label: "Type", sortable: true, align: "left" },
-  { key: "quantity", label: "Quantity", sortable: true, align: "right" },
-  { key: "avgPrice", label: "Avg Price", sortable: true, align: "right" },
-  { key: "currentPrice", label: "Current Price", sortable: true, align: "right" },
-  { key: "marketValue", label: "Market Value", sortable: true, align: "right" },
-  { key: "gainLoss", label: "Gain/Loss", sortable: true, align: "right" },
+  { key: "instrumentName", label: "Instrument Name", align: "left" },
+  { key: "type", label: "Type", align: "left" },
+  { key: "quantity", label: "Quantity", align: "right" },
+  { key: "avgPrice", label: "Avg Price", align: "right" },
+  { key: "currentPrice", label: "Current Price", align: "right" },
+  { key: "marketValue", label: "Market Value", align: "right" },
+  { key: "gainLoss", label: "Gain/Loss", align: "right" },
 ];
 
 const PositionsTable = ({ positions = [], loading = false }) => {
@@ -53,6 +53,7 @@ const PositionsTable = ({ positions = [], loading = false }) => {
       setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
       return;
     }
+
     setSortKey(nextKey);
     setSortDirection("asc");
   };
@@ -61,7 +62,8 @@ const PositionsTable = ({ positions = [], loading = false }) => {
     if (key !== sortKey) {
       return " -";
     }
-    return sortDirection === "asc" ? " ↑" : " ↓";
+
+    return sortDirection === "asc" ? " (asc)" : " (desc)";
   };
 
   const formatCell = (key, value) => {
@@ -77,19 +79,19 @@ const PositionsTable = ({ positions = [], loading = false }) => {
   };
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Positions</h2>
-      <div className="mt-4 max-h-[26rem] overflow-auto rounded-lg border border-slate-800/70">
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">Positions</h2>
+      <div className="mt-4 max-h-[26rem] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-slate-900 text-slate-400">
-            <tr className="border-b border-slate-800">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-400">
+            <tr className="border-b border-slate-200 dark:border-slate-800">
               {columns.map((column) => (
                 <th
                   key={column.key}
                   className={`px-4 py-3 font-medium ${column.align === "right" ? "text-right" : "text-left"}`}
                 >
                   <button
-                    className="select-none text-inherit hover:text-slate-200"
+                    className="select-none text-inherit hover:text-slate-900 dark:hover:text-slate-100"
                     onClick={() => onSort(column.key)}
                     type="button"
                   >
@@ -103,32 +105,32 @@ const PositionsTable = ({ positions = [], loading = false }) => {
           <tbody>
             {loading
               ? skeletonRows.map((_, index) => (
-                  <tr key={`positions-skeleton-${index}`} className="border-b border-slate-800/70">
+                  <tr key={`positions-skeleton-${index}`} className="border-b border-slate-100 dark:border-slate-800/60">
                     <td className="px-4 py-3">
-                      <div className="h-4 w-28 animate-pulse rounded bg-slate-800" />
+                      <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="h-4 w-20 animate-pulse rounded bg-slate-800" />
+                      <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="h-4 w-12 animate-pulse rounded bg-slate-800" />
+                      <div className="h-4 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+                      <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+                      <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="h-4 w-28 animate-pulse rounded bg-slate-800" />
+                      <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+                      <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                     </td>
                   </tr>
                 ))
               : sortedPositions.map((position) => (
-                  <tr key={position.id || position.instrumentName} className="border-b border-slate-800/70 text-slate-200">
+                  <tr key={position.id || position.instrumentName} className="border-b border-slate-100 text-slate-700 dark:border-slate-800/60 dark:text-slate-300">
                     {columns.map((column) => {
                       const value = position[column.key];
                       const isNegative = Number(value) < 0;
@@ -137,8 +139,12 @@ const PositionsTable = ({ positions = [], loading = false }) => {
                         <td
                           key={`${position.id || position.instrumentName}-${column.key}`}
                           className={`px-4 py-3 ${column.align === "right" ? "text-right" : "text-left"} ${
-                            column.key === "gainLoss" ? (isNegative ? "text-rose-400" : "text-emerald-400") : ""
-                          } ${isNegative && column.key !== "gainLoss" ? "text-rose-400" : ""}`}
+                            column.key === "gainLoss"
+                              ? isNegative
+                                ? "text-rose-600 dark:text-rose-400"
+                                : "text-emerald-600 dark:text-emerald-400"
+                              : ""
+                          } ${isNegative && column.key !== "gainLoss" ? "text-rose-600 dark:text-rose-400" : ""}`}
                         >
                           {formatCell(column.key, value)}
                         </td>
@@ -149,9 +155,7 @@ const PositionsTable = ({ positions = [], loading = false }) => {
           </tbody>
         </table>
       </div>
-      {!loading && positions.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-400">No positions found.</p>
-      ) : null}
+      {!loading && positions.length === 0 ? <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">No positions found.</p> : null}
     </section>
   );
 };

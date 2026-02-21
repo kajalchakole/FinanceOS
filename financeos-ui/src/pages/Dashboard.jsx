@@ -178,13 +178,13 @@ const Dashboard = () => {
       {loading ? <LoadingSpinner label="Syncing latest holdings..." /> : null}
 
       {isCriticalError ? (
-        <section className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-6 text-rose-300">
-          <h2 className="text-lg font-semibold text-rose-200">Unable to load dashboard</h2>
+        <section className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
+          <h2 className="text-lg font-semibold text-rose-800 dark:text-rose-200">Unable to load dashboard</h2>
           <p className="mt-2 text-sm">Please check your API connection and try again.</p>
           <button
             type="button"
             onClick={() => setRefreshTick((prev) => prev + 1)}
-            className="mt-4 rounded-md border border-rose-300/40 px-3 py-2 text-sm font-medium text-rose-100 hover:bg-rose-500/20"
+            className="mt-4 rounded-md border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 dark:border-rose-700/60 dark:text-rose-200 dark:hover:bg-rose-900/50"
           >
             Retry
           </button>
@@ -192,7 +192,7 @@ const Dashboard = () => {
       ) : null}
 
       {errors.length > 0 && !isCriticalError ? (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
           <p className="font-medium">Some dashboard data could not be loaded.</p>
           <ul className="mt-1 list-disc pl-4">
             {errors.map((message) => (
@@ -203,13 +203,13 @@ const Dashboard = () => {
       ) : null}
 
       {isEmptyState ? (
-        <section className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-center">
-          <h2 className="text-lg font-semibold text-slate-100">No portfolio activity yet</h2>
-          <p className="mt-2 text-sm text-slate-400">Import transactions to start tracking positions and performance.</p>
+        <section className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">No portfolio activity yet</h2>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Import transactions to start tracking positions and performance.</p>
           <button
             type="button"
             onClick={() => setRefreshTick((prev) => prev + 1)}
-            className="mt-4 rounded-md border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+            className="mt-4 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Refresh
           </button>
@@ -223,11 +223,11 @@ const Dashboard = () => {
               ? Array.from({ length: 3 }).map((_, index) => (
                   <article
                     key={`stat-skeleton-${index}`}
-                    className="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg shadow-black/20"
+                    className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
                   >
-                    <div className="h-3 w-28 animate-pulse rounded bg-slate-800" />
-                    <div className="mt-3 h-8 w-40 animate-pulse rounded bg-slate-800" />
-                    <div className="mt-3 h-4 w-24 animate-pulse rounded bg-slate-800" />
+                    <div className="h-3 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="mt-3 h-8 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="mt-3 h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                   </article>
                 ))
               : stats.map((stat) => <StatCard key={stat.title} {...stat} />)}
