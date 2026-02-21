@@ -1,14 +1,29 @@
 {
   "name": "financeos",
   "version": "0.1.0",
-  "description": "FinanceOS backend scaffold",
+  "description": "Open-source finance operating system with API and web dashboard",
   "main": "server.js",
   "type": "commonjs",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "financeos-ui"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "start": "node server.js",
+    "start:api": "node server.js",
     "dev": "nodemon server.js",
+    "dev:api": "nodemon server.js",
+    "dev:web": "npm --prefix financeos-ui run dev",
+    "build:web": "npm --prefix financeos-ui run build",
+    "preview:web": "npm --prefix financeos-ui run preview",
     "db:clean:transactions": "node scripts/clean-transactions.js",
     "test": "jest --runInBand --detectOpenHandles",
+    "test:api": "jest --runInBand --detectOpenHandles",
     "test:watch": "jest --watch"
   },
   "dependencies": {
