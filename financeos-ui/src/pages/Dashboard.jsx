@@ -30,6 +30,28 @@ const percent = new Intl.NumberFormat(LOCALE, {
   maximumFractionDigits: 2,
 });
 
+function formatInstrumentType(type) {
+  const normalized = String(type || "").trim().toUpperCase();
+
+  if (normalized === "EQUITY" || normalized === "STOCK") {
+    return "Equity";
+  }
+
+  if (normalized === "MF" || normalized === "MUTUAL_FUND" || normalized === "MUTUAL FUND") {
+    return "MF";
+  }
+
+  if (!normalized) {
+    return "Unknown";
+  }
+
+  return normalized
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [positions, setPositions] = useState([]);
@@ -66,11 +88,13 @@ const Dashboard = () => {
       if (positionsRes.status === "fulfilled") {
         const positionRows = (positionsRes.value?.data || []).map((position) => ({
           id: position.isin,
-          symbol: position.symbol || position.isin || "-",
+          instrumentName: position.symbol || position.isin || "-",
+          type: formatInstrumentType(position.instrumentType),
           quantity: Number(position.remainingQty || 0),
-          avgPrice: currency.format(Number(position.avgCost || 0)),
-          ltp: currency.format(Number(position.currentPrice || 0)),
-          pnl: currency.format(Number(position.unrealizedPnL || 0)),
+          avgPrice: Number(position.avgCost || 0),
+          currentPrice: Number(position.currentPrice || 0),
+          marketValue: Number(position.marketValue || 0),
+          gainLoss: Number(position.unrealizedPnL || 0),
         }));
         setPositions(positionRows);
       } else {
