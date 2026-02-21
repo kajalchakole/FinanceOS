@@ -107,11 +107,12 @@ const Dashboard = () => {
           .reverse()
           .map((tx) => ({
             id: tx._id || `${tx.isin}-${tx.transactionDate}`,
-            date: tx.transactionDate ? new Date(tx.transactionDate).toISOString().slice(0, 10) : "-",
+            date: tx.transactionDate || "",
+            instrument: tx.symbol || tx.isin || "-",
             type: tx.transactionType || "-",
-            symbol: tx.symbol || tx.isin || "-",
             quantity: Number(tx.quantity || 0),
-            price: currency.format(Number(tx.price || 0)),
+            price: Number(tx.price || 0),
+            amount: Number(tx.quantity || 0) * Number(tx.price || 0) + Number(tx.charges || 0),
           }));
         setTransactions(txRows);
       } else {
