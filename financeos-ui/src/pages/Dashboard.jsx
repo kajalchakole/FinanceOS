@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getPortfolioSummary, getPositions, getTransactions } from "../api/client";
+import LoadingSpinner from "../components/LoadingSpinner";
 import StatCard from "../components/StatCard";
 import PositionsTable from "../components/PositionsTable";
 import TransactionsTable from "../components/TransactionsTable";
@@ -58,6 +59,7 @@ const Dashboard = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState([]);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -65,6 +67,9 @@ const Dashboard = () => {
     const loadDashboard = async () => {
       setLoading(true);
       setErrors([]);
+      setSummary(null);
+      setPositions([]);
+      setTransactions([]);
 
       const [portfolioRes, positionsRes, transactionsRes] = await Promise.allSettled([
         getPortfolioSummary(),
@@ -134,7 +139,7 @@ const Dashboard = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshTick]);
 
   const stats = useMemo(() => {
     const totalMarketValue = Number(summary?.totalMarketValue || 0);
@@ -164,9 +169,29 @@ const Dashboard = () => {
     ];
   }, [positions.length, summary]);
 
+  const hasData = Boolean(summary) || positions.length > 0 || transactions.length > 0;
+  const isCriticalError = !loading && errors.length >= 3 && !hasData;
+  const isEmptyState = !loading && !isCriticalError && !hasData;
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
-      {errors.length > 0 ? (
+      {loading ? <LoadingSpinner label="Syncing latest holdings..." /> : null}
+
+      {isCriticalError ? (
+        <section className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-6 text-rose-300">
+          <h2 className="text-lg font-semibold text-rose-200">Unable to load dashboard</h2>
+          <p className="mt-2 text-sm">Please check your API connection and try again.</p>
+          <button
+            type="button"
+            onClick={() => setRefreshTick((prev) => prev + 1)}
+            className="mt-4 rounded-md border border-rose-300/40 px-3 py-2 text-sm font-medium text-rose-100 hover:bg-rose-500/20"
+          >
+            Retry
+          </button>
+        </section>
+      ) : null}
+
+      {errors.length > 0 && !isCriticalError ? (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
           <p className="font-medium">Some dashboard data could not be loaded.</p>
           <ul className="mt-1 list-disc pl-4">
@@ -176,28 +201,47 @@ const Dashboard = () => {
           </ul>
         </div>
       ) : null}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {loading
-          ? Array.from({ length: 3 }).map((_, index) => (
-              <article
-                key={`stat-skeleton-${index}`}
-                className="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg shadow-black/20"
-              >
-                <div className="h-3 w-28 animate-pulse rounded bg-slate-800" />
-                <div className="mt-3 h-8 w-40 animate-pulse rounded bg-slate-800" />
-                <div className="mt-3 h-4 w-24 animate-pulse rounded bg-slate-800" />
-              </article>
-            ))
-          : stats.map((stat) => <StatCard key={stat.title} {...stat} />)}
-      </section>
-      <section className="grid gap-6 xl:grid-cols-5">
-        <div className="xl:col-span-3">
-          <PositionsTable positions={positions} loading={loading} />
-        </div>
-        <div className="xl:col-span-2">
-          <TransactionsTable transactions={transactions} loading={loading} />
-        </div>
-      </section>
+
+      {isEmptyState ? (
+        <section className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-center">
+          <h2 className="text-lg font-semibold text-slate-100">No portfolio activity yet</h2>
+          <p className="mt-2 text-sm text-slate-400">Import transactions to start tracking positions and performance.</p>
+          <button
+            type="button"
+            onClick={() => setRefreshTick((prev) => prev + 1)}
+            className="mt-4 rounded-md border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+          >
+            Refresh
+          </button>
+        </section>
+      ) : null}
+
+      {isCriticalError ? null : (
+        <>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {loading
+              ? Array.from({ length: 3 }).map((_, index) => (
+                  <article
+                    key={`stat-skeleton-${index}`}
+                    className="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg shadow-black/20"
+                  >
+                    <div className="h-3 w-28 animate-pulse rounded bg-slate-800" />
+                    <div className="mt-3 h-8 w-40 animate-pulse rounded bg-slate-800" />
+                    <div className="mt-3 h-4 w-24 animate-pulse rounded bg-slate-800" />
+                  </article>
+                ))
+              : stats.map((stat) => <StatCard key={stat.title} {...stat} />)}
+          </section>
+          <section className="grid gap-6 xl:grid-cols-5">
+            <div className="xl:col-span-3">
+              <PositionsTable positions={positions} loading={loading} />
+            </div>
+            <div className="xl:col-span-2">
+              <TransactionsTable transactions={transactions} loading={loading} />
+            </div>
+          </section>
+        </>
+      )}
     </main>
   );
 };
