@@ -122,19 +122,19 @@ const Dashboard = () => {
         title: "Total Portfolio Value",
         value: currency.format(totalMarketValue),
         change: `${positions.length} holdings`,
-        positive: totalUnrealizedPnLPercent >= 0,
+        changeType: totalUnrealizedPnLPercent >= 0 ? "positive" : "negative",
       },
       {
         title: "Total Invested",
         value: currency.format(totalInvested),
         change: positions.length ? `${positions.length} active positions` : "No active positions",
-        positive: true,
+        changeType: "positive",
       },
       {
         title: "Total Gain/Loss",
         value: currency.format(totalUnrealizedPnL),
         change: `${totalUnrealizedPnLPercent >= 0 ? "+" : ""}${percent.format(totalUnrealizedPnLPercent)}%`,
-        positive: totalUnrealizedPnL >= 0,
+        changeType: totalUnrealizedPnL >= 0 ? "positive" : "negative",
       },
     ];
   }, [positions.length, summary]);
