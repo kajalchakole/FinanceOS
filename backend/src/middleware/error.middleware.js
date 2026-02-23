@@ -1,13 +1,26 @@
-﻿export const notFoundHandler = (req, res) => {
+export const notFoundHandler = (req, res) => {
   res.status(404).json({
     message: `Route not found: ${req.method} ${req.originalUrl}`
   });
 };
 
 export const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
+  let statusCode = err.statusCode || 500;
+  let message = err.message || "Internal server error";
+
+  if (err.name === "ValidationError") {
+    statusCode = 400;
+    message = Object.values(err.errors)
+      .map((fieldError) => fieldError.message)
+      .join(", ");
+  }
+
+  if (err.name === "CastError") {
+    statusCode = 400;
+    message = "Invalid resource id";
+  }
 
   res.status(statusCode).json({
-    message: err.message || "Internal server error"
+    message
   });
 };

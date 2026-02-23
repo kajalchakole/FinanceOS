@@ -8,7 +8,7 @@ function TopHeader() {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm text-brand-muted">
-            Net Worth: <span className="font-semibold text-brand-text">$0.00</span>
+            Net Worth: <span className="font-semibold text-brand-text">{"\u20B9"}0.00</span>
           </div>
 
           <div className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm text-brand-muted">
