@@ -1,4 +1,5 @@
 import Goal from "./goal.model.js";
+import { calculateProjection } from "../projection/projection.service.js";
 
 const notFoundError = (message) => {
   const error = new Error(message);
@@ -6,8 +7,38 @@ const notFoundError = (message) => {
   return error;
 };
 
+const conflictError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 409;
+  return error;
+};
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const findGoalByName = async (name, excludedGoalId) => {
+  const query = {
+    name: new RegExp(`^${escapeRegExp(name)}$`, "i")
+  };
+
+  if (excludedGoalId) {
+    query._id = { $ne: excludedGoalId };
+  }
+
+  return Goal.findOne(query);
+};
+
 export const createGoal = async (req, res, next) => {
   try {
+    const normalizedName = req.body?.name?.trim();
+
+    if (normalizedName) {
+      const existingGoal = await findGoalByName(normalizedName);
+
+      if (existingGoal) {
+        throw conflictError("Goal name already exists");
+      }
+    }
+
     const goal = await Goal.create(req.body);
     res.status(201).json(goal);
   } catch (error) {
@@ -18,7 +49,16 @@ export const createGoal = async (req, res, next) => {
 export const getGoals = async (req, res, next) => {
   try {
     const goals = await Goal.find().sort({ createdAt: -1 });
-    res.status(200).json(goals);
+    const goalsWithProjection = goals.map((goal) => {
+      const goalData = goal.toObject();
+
+      return {
+        ...goalData,
+        projection: calculateProjection(goalData)
+      };
+    });
+
+    res.status(200).json(goalsWithProjection);
   } catch (error) {
     next(error);
   }
@@ -40,6 +80,18 @@ export const getGoalById = async (req, res, next) => {
 
 export const updateGoal = async (req, res, next) => {
   try {
+    if (typeof req.body?.name === "string") {
+      const normalizedName = req.body.name.trim();
+
+      if (normalizedName) {
+        const existingGoal = await findGoalByName(normalizedName, req.params.id);
+
+        if (existingGoal) {
+          throw conflictError("Goal name already exists");
+        }
+      }
+    }
+
     const goal = await Goal.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
