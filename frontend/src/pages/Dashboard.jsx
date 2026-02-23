@@ -1,4 +1,6 @@
-﻿function DashboardPage() {
+import React from "react";
+
+function DashboardPage() {
   const cards = [
     "Total Net Worth",
     "Monthly Savings",

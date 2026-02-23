@@ -1,4 +1,6 @@
-﻿function TopHeader() {
+import React from "react";
+
+function TopHeader() {
   return (
     <header className="border-b border-brand-line bg-brand-panel px-6 py-5 shadow-soft sm:px-8 lg:px-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

@@ -1,4 +1,6 @@
-﻿function HoldingsPage() {
+import React from "react";
+
+function HoldingsPage() {
   return (
     <section className="rounded-2xl border border-brand-line bg-brand-panel p-8 shadow-soft">
       <h2 className="text-2xl font-semibold tracking-tight text-brand-text">Holdings</h2>
