@@ -16,6 +16,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/goals" element={<GoalsPage />} />
         <Route path="/goals/new" element={<CreateGoalPage />} />
+        <Route path="/goals/:id/edit" element={<CreateGoalPage />} />
         <Route path="/holdings" element={<HoldingsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

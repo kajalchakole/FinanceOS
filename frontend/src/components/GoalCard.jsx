@@ -1,13 +1,17 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 function GoalCard({ goal, onDelete, isDeleting = false }) {
   const projection = goal.projection || {};
   const isOnTrack = projection.status === "On Track";
+  const isGoalMet = projection.status === "Goal Met";
   const isExpired = projection.status === "Expired";
   const gapClassName = projection.gap >= 0 ? "text-emerald-600" : "text-rose-600";
   const statusClassName = isExpired
     ? "border-amber-200 bg-amber-50 text-amber-700"
-    : isOnTrack
+    : isGoalMet
+      ? "border-teal-200 bg-teal-50 text-teal-700"
+      : isOnTrack
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : "border-rose-200 bg-rose-50 text-rose-700";
   const statusLabel = isExpired ? "Year Passed" : (projection.status || "At Risk");
@@ -27,16 +31,26 @@ function GoalCard({ goal, onDelete, isDeleting = false }) {
           <span className="rounded-lg border border-brand-line bg-slate-50 px-3 py-1 text-xs font-semibold text-brand-muted">
             {goal.targetYear}
           </span>
-          <button
-            type="button"
-            onClick={() => onDelete(goal)}
-            disabled={isDeleting}
-            aria-label={isDeleting ? "Deleting goal" : "Delete goal"}
-            title={isDeleting ? "Deleting..." : "Delete goal"}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <i className="bi bi-trash text-[11px] leading-none" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              to={`/goals/${goal._id}/edit`}
+              aria-label="Edit goal"
+              title="Edit goal"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-brand-line bg-slate-50 text-brand-muted transition hover:bg-slate-100"
+            >
+              <i className="bi bi-pencil text-[11px] leading-none" aria-hidden="true" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => onDelete(goal)}
+              disabled={isDeleting}
+              aria-label={isDeleting ? "Deleting goal" : "Delete goal"}
+              title={isDeleting ? "Deleting..." : "Delete goal"}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <i className={`bi ${isDeleting ? "bi-hourglass-split" : "bi-trash"} text-[11px] leading-none`} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
 

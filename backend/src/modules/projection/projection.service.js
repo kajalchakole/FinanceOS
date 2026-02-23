@@ -3,14 +3,12 @@ export const calculateProjection = (goal) => {
   const years = goal.targetYear - currentYear;
 
   if (years <= 0) {
-    const projectedCorpus = goal.initialInvestment;
-
     return {
       futureRequired: 0,
-      projectedCorpus,
-      gap: projectedCorpus,
+      projectedCorpus: goal.initialInvestment,
+      gap: goal.initialInvestment,
       status: "Expired",
-      yearsRemaining: years
+      yearsRemaining: 0
     };
   }
 
@@ -28,7 +26,15 @@ export const calculateProjection = (goal) => {
 
   const projectedCorpus = corpus;
   const gap = projectedCorpus - futureRequired;
-  const status = gap >= 0 ? "On Track" : "At Risk";
+  let status;
+
+  if (projectedCorpus >= futureRequired) {
+    status = "Goal Met";
+  } else if (gap >= 0) {
+    status = "On Track";
+  } else {
+    status = "At Risk";
+  }
 
   return {
     futureRequired,
@@ -38,4 +44,3 @@ export const calculateProjection = (goal) => {
     yearsRemaining: years
   };
 };
-

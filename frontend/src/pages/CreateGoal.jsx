@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../services/api";
 
@@ -16,10 +16,47 @@ const initialFormState = {
 };
 
 function CreateGoalPage() {
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
   const navigate = useNavigate();
   const [formData, setFormData] = useState(initialFormState);
+  const [isLoadingGoal, setIsLoadingGoal] = useState(isEditMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isEditMode) {
+      return;
+    }
+
+    const fetchGoal = async () => {
+      setError("");
+      setIsLoadingGoal(true);
+
+      try {
+        const response = await api.get(`/goals/${id}`);
+        const goal = response.data;
+
+        setFormData({
+          name: goal.name || "",
+          type: goal.type || "one-time",
+          targetYear: goal.targetYear?.toString() || "",
+          presentValue: goal.presentValue?.toString() || "",
+          initialInvestment: goal.initialInvestment?.toString() || "",
+          inflationRate: goal.inflationRate?.toString() || "",
+          expectedReturnRate: goal.expectedReturnRate?.toString() || "",
+          monthlySIP: goal.monthlySIP?.toString() || "",
+          stepUpRate: goal.stepUpRate?.toString() || "10"
+        });
+      } catch (requestError) {
+        setError(requestError.response?.data?.message || "Unable to load goal");
+      } finally {
+        setIsLoadingGoal(false);
+      }
+    };
+
+    fetchGoal();
+  }, [id, isEditMode]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -35,7 +72,7 @@ function CreateGoalPage() {
     setIsSubmitting(true);
 
     try {
-      await api.post("/goals", {
+      const payload = {
         name: formData.name.trim(),
         type: formData.type,
         targetYear: Number(formData.targetYear),
@@ -46,11 +83,17 @@ function CreateGoalPage() {
         expectedReturnRate: Number(formData.expectedReturnRate),
         monthlySIP: formData.monthlySIP === "" ? 0 : Number(formData.monthlySIP),
         stepUpRate: formData.stepUpRate === "" ? 10 : Number(formData.stepUpRate)
-      });
+      };
+
+      if (isEditMode) {
+        await api.put(`/goals/${id}`, payload);
+      } else {
+        await api.post("/goals", payload);
+      }
 
       navigate("/goals");
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Unable to create goal");
+      setError(requestError.response?.data?.message || `Unable to ${isEditMode ? "update" : "create"} goal`);
     } finally {
       setIsSubmitting(false);
     }
@@ -59,9 +102,17 @@ function CreateGoalPage() {
   return (
     <section className="mx-auto w-full max-w-4xl space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-brand-text">Create Goal</h2>
-        <p className="mt-1 text-sm text-brand-muted">Set up your goal assumptions for planning workflows.</p>
+        <h2 className="text-2xl font-semibold tracking-tight text-brand-text">
+          {isEditMode ? "Edit Goal" : "Create Goal"}
+        </h2>
+        <p className="mt-1 text-sm text-brand-muted">
+          {isEditMode
+            ? "Update your goal assumptions."
+            : "Set up your goal assumptions for planning workflows."}
+        </p>
       </div>
+
+      {isLoadingGoal ? <p className="text-sm text-brand-muted">Loading goal...</p> : null}
 
       <form
         onSubmit={handleSubmit}
@@ -211,10 +262,10 @@ function CreateGoalPage() {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingGoal}
             className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {isSubmitting ? "Saving..." : "Create Goal"}
+            {isSubmitting ? "Saving..." : isEditMode ? "Update Goal" : "Create Goal"}
           </button>
         </div>
       </form>
