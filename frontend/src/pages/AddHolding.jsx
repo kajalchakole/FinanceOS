@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
 
 const initialFormState = {
-  broker: "",
+  broker: "manual",
   instrumentName: "",
   instrumentType: "",
   quantity: "",
@@ -136,7 +136,7 @@ function AddHoldingPage() {
               onChange={handleChange}
               required
               className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
-              placeholder="e.g. Zerodha"
+              placeholder="e.g. manual, kite"
             />
           </label>
 

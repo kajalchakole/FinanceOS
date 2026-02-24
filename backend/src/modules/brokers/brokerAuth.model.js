@@ -15,6 +15,10 @@ const brokerAuthSchema = new mongoose.Schema({
   generatedAt: {
     type: Date,
     default: Date.now
+  },
+  lastSyncAt: {
+    type: Date,
+    default: null
   }
 });
 

@@ -30,9 +30,20 @@ function DashboardPage() {
 
     loadDashboard();
     window.addEventListener("dashboard:refresh", handleDashboardRefresh);
+    const handlePortfolioRefreshed = (event) => {
+      const nextDashboard = event.detail?.dashboard;
+
+      if (nextDashboard) {
+        setSummary(nextDashboard);
+        setError("");
+        setIsLoading(false);
+      }
+    };
+    window.addEventListener("portfolio:refreshed", handlePortfolioRefreshed);
 
     return () => {
       window.removeEventListener("dashboard:refresh", handleDashboardRefresh);
+      window.removeEventListener("portfolio:refreshed", handlePortfolioRefreshed);
     };
   }, []);
 

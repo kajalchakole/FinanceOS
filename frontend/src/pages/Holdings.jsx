@@ -44,6 +44,27 @@ function HoldingsPage() {
   }, []);
 
   useEffect(() => {
+    const handlePortfolioRefreshed = (event) => {
+      const nextHoldings = event.detail?.holdings;
+      const nextGoals = event.detail?.goals;
+
+      if (Array.isArray(nextHoldings)) {
+        setHoldings(nextHoldings);
+      }
+
+      if (Array.isArray(nextGoals)) {
+        setGoals(nextGoals);
+      }
+    };
+
+    window.addEventListener("portfolio:refreshed", handlePortfolioRefreshed);
+
+    return () => {
+      window.removeEventListener("portfolio:refreshed", handlePortfolioRefreshed);
+    };
+  }, []);
+
+  useEffect(() => {
     const selectableHoldingIds = holdings.map((holding) => holding._id);
     const allSelected = selectableHoldingIds.length > 0 && selectableHoldingIds.every((holdingId) => selectedHoldingIds.includes(holdingId));
     const hasSelection = selectedHoldingIds.length > 0;

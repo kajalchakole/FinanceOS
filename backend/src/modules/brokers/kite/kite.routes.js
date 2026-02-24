@@ -10,6 +10,6 @@ const kiteRouter = Router();
 
 kiteRouter.get("/connect", redirectToKiteLogin);
 kiteRouter.get("/callback", handleKiteCallback);
-kiteRouter.get("/sync", syncKiteHoldingsController);
+kiteRouter.post("/sync", syncKiteHoldingsController);
 
 export default kiteRouter;

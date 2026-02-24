@@ -24,11 +24,11 @@ export const handleKiteCallback = async (req, res, next) => {
 
 export const syncKiteHoldingsController = async (req, res, next) => {
   try {
-    const count = await syncKiteHoldings();
+    const holdingsUpdated = await syncKiteHoldings();
 
     res.status(200).json({
-      message: "Holdings synced successfully",
-      count
+      success: true,
+      holdingsUpdated
     });
   } catch (error) {
     next(error);

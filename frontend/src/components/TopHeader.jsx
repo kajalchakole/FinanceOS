@@ -1,32 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
-import api from "../services/api";
+import { usePortfolio } from "../context/PortfolioContext";
+import SyncStatus from "./SyncStatus";
 
 function TopHeader() {
-  const [netWorth, setNetWorth] = useState(0);
-
-  useEffect(() => {
-    const fetchNetWorth = async () => {
-      try {
-        const response = await api.get("/dashboard");
-        setNetWorth(response.data?.netWorth || 0);
-      } catch (error) {
-        setNetWorth(0);
-      }
-    };
-
-    fetchNetWorth();
-
-    const handleDashboardRefresh = () => {
-      fetchNetWorth();
-    };
-
-    window.addEventListener("dashboard:refresh", handleDashboardRefresh);
-
-    return () => {
-      window.removeEventListener("dashboard:refresh", handleDashboardRefresh);
-    };
-  }, []);
+  const { netWorth } = usePortfolio();
 
   const formattedNetWorth = `\u20B9${Number(netWorth || 0).toLocaleString("en-IN", {
     maximumFractionDigits: 2
@@ -42,9 +20,7 @@ function TopHeader() {
             Net Worth: <span className="font-semibold text-brand-text">{formattedNetWorth}</span>
           </div>
 
-          <div className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm text-brand-muted">
-            Sync: <span className="font-semibold text-brand-text">Not synced</span>
-          </div>
+          <SyncStatus />
         </div>
       </div>
     </header>

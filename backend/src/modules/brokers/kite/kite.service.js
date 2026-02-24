@@ -7,6 +7,7 @@ import BrokerAuth from "../brokerAuth.model.js";
 const KITE_LOGIN_URL = "https://kite.zerodha.com/connect/login";
 const KITE_SESSION_URL = "https://api.kite.trade/session/token";
 const KITE_HOLDINGS_URL = "https://api.kite.trade/portfolio/holdings";
+const KITE_MF_HOLDINGS_URL = "https://api.kite.trade/mf/holdings";
 
 const internalServerError = (message) => {
   const error = new Error(message);
@@ -109,14 +110,28 @@ export const connectKiteWithRequestToken = async (requestToken) => {
 };
 
 const normalizeHolding = (item) => ({
-  broker: "Zerodha",
+  broker: "kite",
   instrumentName: item.tradingsymbol,
   instrumentType: "Equity",
-  quantity: item.quantity,
-  averagePrice: item.average_price,
-  currentPrice: item.last_price,
+  quantity: Number(item.quantity || 0),
+  averagePrice: Number(item.average_price || 0),
+  currentPrice: Number(item.last_price || 0),
   goalId: null
 });
+
+const normalizeMfHolding = (item) => ({
+  broker: "kite",
+  instrumentName: item.fund || item.tradingsymbol,
+  instrumentType: "Mutual Fund",
+  quantity: Number(item.quantity || 0),
+  averagePrice: Number(item.average_price || 0),
+  currentPrice: Number(item.last_price || 0),
+  goalId: null
+});
+
+const getHoldingKey = (instrumentName, instrumentType) => (
+  `${String(instrumentName || "").trim().toLowerCase()}::${String(instrumentType || "").trim().toLowerCase()}`
+);
 
 export const syncKiteHoldings = async () => {
   const apiKey = getApiKey();
@@ -126,12 +141,20 @@ export const syncKiteHoldings = async () => {
     throw badRequestError("Not Connected");
   }
 
-  console.info("[Kite Sync] Starting holdings sync for broker=Zerodha");
+  console.info("[Kite Sync] Starting holdings sync for broker=kite");
 
   let response;
+  let mfResponse;
 
   try {
     response = await axios.get(KITE_HOLDINGS_URL, {
+      headers: {
+        Authorization: `token ${apiKey}:${brokerAuth.accessToken}`,
+        "X-Kite-Version": "3"
+      }
+    });
+
+    mfResponse = await axios.get(KITE_MF_HOLDINGS_URL, {
       headers: {
         Authorization: `token ${apiKey}:${brokerAuth.accessToken}`,
         "X-Kite-Version": "3"
@@ -150,23 +173,71 @@ export const syncKiteHoldings = async () => {
   }
 
   const holdings = Array.isArray(response?.data?.data) ? response.data.data : [];
-  const normalizedHoldings = holdings.map(normalizeHolding);
-  const syncedSymbols = normalizedHoldings.map((holding) => holding.instrumentName);
+  const mfHoldings = Array.isArray(mfResponse?.data?.data) ? mfResponse.data.data : [];
+  const existingBrokerHoldings = await Holding.find(
+    { broker: { $in: ["kite", "Zerodha"] } },
+    { instrumentName: 1, instrumentType: 1, goalId: 1 }
+  ).lean();
+
+  const goalIdByHoldingKey = existingBrokerHoldings.reduce((accumulator, holding) => {
+    if (!holding?.goalId) {
+      return accumulator;
+    }
+
+    const key = getHoldingKey(holding.instrumentName, holding.instrumentType);
+
+    if (!accumulator.has(key)) {
+      accumulator.set(key, holding.goalId);
+    }
+
+    return accumulator;
+  }, new Map());
+
+  const normalizedHoldings = holdings.map((item) => {
+    const normalized = normalizeHolding(item);
+    const existingGoalId = goalIdByHoldingKey.get(getHoldingKey(normalized.instrumentName, normalized.instrumentType));
+
+    if (existingGoalId) {
+      normalized.goalId = existingGoalId;
+    }
+
+    return normalized;
+  });
+
+  const normalizedMfHoldings = mfHoldings.map((item) => {
+    const normalized = normalizeMfHolding(item);
+    const existingGoalId = goalIdByHoldingKey.get(getHoldingKey(normalized.instrumentName, normalized.instrumentType));
+
+    if (existingGoalId) {
+      normalized.goalId = existingGoalId;
+    }
+
+    return normalized;
+  });
+  const allNormalizedHoldings = [...normalizedHoldings, ...normalizedMfHoldings];
+  const syncedSymbols = allNormalizedHoldings.map((holding) => holding.instrumentName);
 
   console.info("[Kite Sync] Holdings fetched from Kite", {
-    count: syncedSymbols.length,
+    equityCount: normalizedHoldings.length,
+    mutualFundCount: normalizedMfHoldings.length,
+    count: allNormalizedHoldings.length,
     symbols: syncedSymbols
   });
 
-  await Holding.deleteMany({ broker: "Zerodha" });
+  await Holding.deleteMany({ broker: { $in: ["kite", "Zerodha"] } });
 
-  if (normalizedHoldings.length > 0) {
-    await Holding.insertMany(normalizedHoldings);
+  if (allNormalizedHoldings.length > 0) {
+    await Holding.insertMany(allNormalizedHoldings);
   }
 
+  await BrokerAuth.updateOne(
+    { broker: "kite" },
+    { $set: { lastSyncAt: new Date() } }
+  );
+
   console.info("[Kite Sync] Holdings sync completed", {
-    insertedCount: normalizedHoldings.length
+    insertedCount: allNormalizedHoldings.length
   });
 
-  return normalizedHoldings.length;
+  return allNormalizedHoldings.length;
 };

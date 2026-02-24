@@ -28,6 +28,22 @@ function GoalsPage() {
     fetchGoals();
   }, []);
 
+  useEffect(() => {
+    const handlePortfolioRefreshed = (event) => {
+      const nextGoals = event.detail?.goals;
+
+      if (Array.isArray(nextGoals)) {
+        setGoals(nextGoals);
+      }
+    };
+
+    window.addEventListener("portfolio:refreshed", handlePortfolioRefreshed);
+
+    return () => {
+      window.removeEventListener("portfolio:refreshed", handlePortfolioRefreshed);
+    };
+  }, []);
+
   const handleDeleteGoal = (goal) => {
     setDeleteModalError("");
     setGoalPendingDelete(goal);
