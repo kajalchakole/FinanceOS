@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
+import AddHoldingPage from "./pages/AddHolding";
 import CreateGoalPage from "./pages/CreateGoal";
 import DashboardPage from "./pages/Dashboard";
 import GoalsPage from "./pages/Goals";
@@ -18,6 +19,8 @@ function App() {
         <Route path="/goals/new" element={<CreateGoalPage />} />
         <Route path="/goals/:id/edit" element={<CreateGoalPage />} />
         <Route path="/holdings" element={<HoldingsPage />} />
+        <Route path="/holdings/new" element={<AddHoldingPage />} />
+        <Route path="/holdings/:id/edit" element={<AddHoldingPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>

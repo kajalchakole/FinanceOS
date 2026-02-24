@@ -1,11 +1,27 @@
 import Goal from "../goals/goal.model.js";
-import { calculateProjection } from "../projection/projection.service.js";
+import Holding from "../holdings/holding.model.js";
+import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 
 export const getDashboardSummary = async () => {
   const goals = await Goal.find().sort({ createdAt: -1 }).lean();
+  const corpusByGoalId = await getCorpusByGoalIds(goals.map((goal) => goal._id));
+
   const activeGoalProjections = goals
-    .map((goal) => calculateProjection(goal))
+    .map((goal) => calculateProjection(goal, corpusByGoalId[goal._id.toString()] || 0))
     .filter((projection) => projection.status === "On Track" || projection.status === "At Risk");
+
+  const netWorthAggregation = await Holding.aggregate([
+    {
+      $group: {
+        _id: null,
+        netWorth: {
+          $sum: {
+            $multiply: ["$quantity", "$currentPrice"]
+          }
+        }
+      }
+    }
+  ]);
 
   const totals = activeGoalProjections.reduce(
     (accumulator, projection) => {
@@ -26,6 +42,7 @@ export const getDashboardSummary = async () => {
     totalProjectedCorpus: totals.totalProjectedCorpus,
     totalGap,
     overallStatus: totalGap >= 0 ? "On Track" : "At Risk",
-    goalCountIncluded: activeGoalProjections.length
+    goalCountIncluded: activeGoalProjections.length,
+    netWorth: netWorthAggregation[0]?.netWorth || 0
   };
 };

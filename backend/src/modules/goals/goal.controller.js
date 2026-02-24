@@ -1,5 +1,5 @@
 import Goal from "./goal.model.js";
-import { calculateProjection } from "../projection/projection.service.js";
+import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 
 const notFoundError = (message) => {
   const error = new Error(message);
@@ -49,12 +49,15 @@ export const createGoal = async (req, res, next) => {
 export const getGoals = async (req, res, next) => {
   try {
     const goals = await Goal.find().sort({ createdAt: -1 });
+    const corpusByGoalId = await getCorpusByGoalIds(goals.map((goal) => goal._id));
+
     const goalsWithProjection = goals.map((goal) => {
       const goalData = goal.toObject();
+      const corpus = corpusByGoalId[goal._id.toString()] || 0;
 
       return {
         ...goalData,
-        projection: calculateProjection(goalData)
+        projection: calculateProjection(goalData, corpus)
       };
     });
 
