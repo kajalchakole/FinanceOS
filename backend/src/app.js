@@ -8,6 +8,7 @@ import dashboardRouter from "./modules/dashboard/dashboard.routes.js";
 import holdingRouter from "./modules/holdings/holding.routes.js";
 import brokerRouter from "./modules/brokers/broker.routes.js";
 import kiteRouter from "./modules/brokers/kite/kite.routes.js";
+import portfolioRouter from "./modules/portfolio/portfolio.routes.js";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use("/api/holdings", holdingRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/brokers", brokerRouter);
 app.use("/api/brokers/kite", kiteRouter);
+app.use("/api/portfolio", portfolioRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

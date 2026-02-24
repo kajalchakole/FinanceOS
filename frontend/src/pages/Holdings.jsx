@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import ConfirmationModal from "../components/ConfirmationModal";
@@ -17,6 +17,10 @@ function HoldingsPage() {
   const [isBulkAssigning, setIsBulkAssigning] = useState(false);
   const [bulkActionError, setBulkActionError] = useState("");
   const [bulkAssignmentPending, setBulkAssignmentPending] = useState(null);
+  const [sortConfig, setSortConfig] = useState({
+    key: "instrumentName",
+    direction: "asc"
+  });
   const selectAllRef = useRef(null);
 
   const fetchPageData = async () => {
@@ -203,6 +207,73 @@ function HoldingsPage() {
     maximumFractionDigits: 2
   })}`;
 
+  const sortedHoldings = useMemo(() => {
+    const sorted = [...holdings];
+
+    sorted.sort((left, right) => {
+      const leftCurrentValue = Number(left.quantity || 0) * Number(left.currentPrice || 0);
+      const rightCurrentValue = Number(right.quantity || 0) * Number(right.currentPrice || 0);
+      const leftInvestedValue = Number(left.quantity || 0) * Number(left.averagePrice || 0);
+      const rightInvestedValue = Number(right.quantity || 0) * Number(right.averagePrice || 0);
+      const leftProfit = leftCurrentValue - leftInvestedValue;
+      const rightProfit = rightCurrentValue - rightInvestedValue;
+      const leftReturn = leftInvestedValue > 0 ? (leftProfit / leftInvestedValue) * 100 : 0;
+      const rightReturn = rightInvestedValue > 0 ? (rightProfit / rightInvestedValue) * 100 : 0;
+
+      const leftValueByKey = {
+        instrumentName: left.instrumentName || "",
+        broker: left.broker || "",
+        quantity: Number(left.quantity || 0),
+        averagePrice: Number(left.averagePrice || 0),
+        currentPrice: Number(left.currentPrice || 0),
+        investedValue: leftInvestedValue,
+        currentValue: leftCurrentValue,
+        profit: leftProfit,
+        returnPercent: leftReturn,
+        linkedGoal: left.goalId?.name || ""
+      }[sortConfig.key];
+
+      const rightValueByKey = {
+        instrumentName: right.instrumentName || "",
+        broker: right.broker || "",
+        quantity: Number(right.quantity || 0),
+        averagePrice: Number(right.averagePrice || 0),
+        currentPrice: Number(right.currentPrice || 0),
+        investedValue: rightInvestedValue,
+        currentValue: rightCurrentValue,
+        profit: rightProfit,
+        returnPercent: rightReturn,
+        linkedGoal: right.goalId?.name || ""
+      }[sortConfig.key];
+
+      if (typeof leftValueByKey === "string" || typeof rightValueByKey === "string") {
+        return String(leftValueByKey).localeCompare(String(rightValueByKey), undefined, { sensitivity: "base" });
+      }
+
+      return Number(leftValueByKey || 0) - Number(rightValueByKey || 0);
+    });
+
+    return sortConfig.direction === "asc" ? sorted : sorted.reverse();
+  }, [holdings, sortConfig.direction, sortConfig.key]);
+
+  const handleSort = (key) => {
+    setSortConfig((current) => {
+      if (current.key === key) {
+        return {
+          key,
+          direction: current.direction === "asc" ? "desc" : "asc"
+        };
+      }
+
+      return {
+        key,
+        direction: "asc"
+      };
+    });
+  };
+
+  const getSortIndicator = (key) => (sortConfig.key === key ? (sortConfig.direction === "asc" ? " ▲" : " ▼") : "");
+
   const selectedCount = selectedHoldingIds.length;
 
   return (
@@ -299,18 +370,46 @@ function HoldingsPage() {
                       aria-label="Select all holdings"
                     />
                   </th>
-                  <th className="px-5 py-3 font-semibold text-brand-text">Instrument</th>
-                  <th className="px-5 py-3 font-semibold text-brand-text">Broker</th>
-                  <th className="px-5 py-3 font-semibold text-brand-text">Quantity</th>
-                  <th className="px-5 py-3 font-semibold text-brand-text">Current Price</th>
-                  <th className="px-5 py-3 font-semibold text-brand-text">Current Value</th>
-                  <th className="px-5 py-3 font-semibold text-brand-text">Linked Goal</th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("instrumentName")} className="font-semibold">Instrument{getSortIndicator("instrumentName")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("broker")} className="font-semibold">Broker{getSortIndicator("broker")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("quantity")} className="font-semibold">Quantity{getSortIndicator("quantity")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("averagePrice")} className="font-semibold">Average Price{getSortIndicator("averagePrice")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("currentPrice")} className="font-semibold">Current Price{getSortIndicator("currentPrice")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("investedValue")} className="font-semibold">Invested Value{getSortIndicator("investedValue")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("currentValue")} className="font-semibold">Current Value{getSortIndicator("currentValue")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("profit")} className="font-semibold">Profit{getSortIndicator("profit")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("returnPercent")} className="font-semibold">Return %{getSortIndicator("returnPercent")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("linkedGoal")} className="font-semibold">Linked Goal{getSortIndicator("linkedGoal")}</button>
+                  </th>
                   <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-line">
-                {holdings.map((holding) => {
+                {sortedHoldings.map((holding) => {
+                  const investedValue = Number(holding.quantity || 0) * Number(holding.averagePrice || 0);
                   const currentValue = Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
+                  const profit = currentValue - investedValue;
+                  const profitPercent = investedValue > 0 ? (profit / investedValue) * 100 : 0;
+                  const profitClassName = profit >= 0 ? "text-emerald-600" : "text-rose-600";
                   const isSelected = selectedHoldingIds.includes(holding._id);
 
                   return (
@@ -327,8 +426,12 @@ function HoldingsPage() {
                       <td className="px-5 py-3 text-brand-text">{holding.instrumentName}</td>
                       <td className="px-5 py-3 text-brand-muted">{holding.broker}</td>
                       <td className="px-5 py-3 text-brand-muted">{holding.quantity}</td>
+                      <td className="px-5 py-3 text-brand-muted">{formatCurrency(holding.averagePrice)}</td>
                       <td className="px-5 py-3 text-brand-muted">{formatCurrency(holding.currentPrice)}</td>
+                      <td className="px-5 py-3 text-brand-muted">{formatCurrency(investedValue)}</td>
                       <td className="px-5 py-3 font-semibold text-brand-text">{formatCurrency(currentValue)}</td>
+                      <td className={`px-5 py-3 font-semibold ${profitClassName}`}>{formatCurrency(profit)}</td>
+                      <td className={`px-5 py-3 font-semibold ${profitClassName}`}>{profitPercent.toFixed(2)}%</td>
                       <td className="px-5 py-3 text-brand-muted">{holding.goalId?.name || "Unlinked"}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">

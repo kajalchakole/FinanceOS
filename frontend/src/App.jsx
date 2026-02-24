@@ -9,6 +9,7 @@ import DashboardPage from "./pages/Dashboard";
 import GoalDetailPage from "./pages/GoalDetail";
 import GoalsPage from "./pages/Goals";
 import HoldingsPage from "./pages/Holdings";
+import PortfolioPage from "./pages/Portfolio";
 import SettingsPage from "./pages/Settings";
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/holdings" element={<HoldingsPage />} />
           <Route path="/holdings/new" element={<AddHoldingPage />} />
           <Route path="/holdings/:id/edit" element={<AddHoldingPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>
