@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import ConfirmationModal from "../components/ConfirmationModal";
 import api from "../services/api";
 
 function HoldingsPage() {
@@ -15,7 +16,7 @@ function HoldingsPage() {
   const [bulkGoalSelection, setBulkGoalSelection] = useState("");
   const [isBulkAssigning, setIsBulkAssigning] = useState(false);
   const [bulkActionError, setBulkActionError] = useState("");
-  const deleteModalRef = useRef(null);
+  const [bulkAssignmentPending, setBulkAssignmentPending] = useState(null);
   const selectAllRef = useRef(null);
 
   const fetchPageData = async () => {
@@ -94,61 +95,6 @@ function HoldingsPage() {
     }
   };
 
-  useEffect(() => {
-    if (!holdingPendingDelete) {
-      return undefined;
-    }
-
-    const modalElement = deleteModalRef.current;
-
-    if (modalElement) {
-      const initialFocusElement = modalElement.querySelector("button");
-      initialFocusElement?.focus();
-    }
-
-    const handleKeyDown = (event) => {
-      if (!deleteModalRef.current) {
-        return;
-      }
-
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeDeleteModal();
-        return;
-      }
-
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const focusableElements = deleteModalRef.current.querySelectorAll(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      );
-
-      if (focusableElements.length === 0) {
-        event.preventDefault();
-        return;
-      }
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      } else if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [holdingPendingDelete, deletingHoldingId]);
-
   const handleHoldingSelection = (holdingId) => {
     setBulkActionError("");
     setBulkGoalSelection("");
@@ -170,18 +116,44 @@ function HoldingsPage() {
     setSelectedHoldingIds(allSelected ? [] : selectableHoldingIds);
   };
 
-  const handleBulkGoalChange = async (event) => {
+  const handleBulkGoalChange = (event) => {
     const value = event.target.value;
     setBulkGoalSelection(value);
     setBulkActionError("");
+  };
 
-    if (!value) {
+  const handleApplyBulkAssignment = async () => {
+    if (selectedHoldingIds.length === 0) {
+      setBulkActionError("Please select at least one holding.");
       return;
     }
 
-    if (selectedHoldingIds.length === 0) {
-      setBulkActionError("Please select at least one holding.");
-      setBulkGoalSelection("");
+    if (!bulkGoalSelection) {
+      setBulkActionError("Please choose a goal or Unassigned.");
+      return;
+    }
+
+    const selectedGoalName = bulkGoalSelection === "unassigned"
+      ? "Unassigned"
+      : goals.find((goal) => goal._id === bulkGoalSelection)?.name || "selected goal";
+
+    setBulkAssignmentPending({
+      holdingIds: [...selectedHoldingIds],
+      goalId: bulkGoalSelection === "unassigned" ? null : bulkGoalSelection,
+      goalName: selectedGoalName
+    });
+  };
+
+  const closeBulkAssignModal = () => {
+    if (isBulkAssigning) {
+      return;
+    }
+
+    setBulkAssignmentPending(null);
+  };
+
+  const handleConfirmBulkAssignment = async () => {
+    if (!bulkAssignmentPending) {
       return;
     }
 
@@ -190,12 +162,13 @@ function HoldingsPage() {
 
     try {
       await api.patch("/holdings/bulk-assign", {
-        holdingIds: selectedHoldingIds,
-        goalId: value === "unassigned" ? null : value
+        holdingIds: bulkAssignmentPending.holdingIds,
+        goalId: bulkAssignmentPending.goalId
       });
 
       setSelectedHoldingIds([]);
       setBulkGoalSelection("");
+      setBulkAssignmentPending(null);
       await fetchPageData();
       refreshDashboard();
     } catch (requestError) {
@@ -252,6 +225,15 @@ function HoldingsPage() {
                   <option key={goal._id} value={goal._id}>{goal.name}</option>
                 ))}
               </select>
+
+              <button
+                type="button"
+                onClick={handleApplyBulkAssignment}
+                disabled={isBulkAssigning || !bulkGoalSelection}
+                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isBulkAssigning ? "Applying..." : "Apply"}
+              </button>
 
               <button
                 type="button"
@@ -354,54 +336,34 @@ function HoldingsPage() {
         </div>
       ) : null}
 
-      {holdingPendingDelete ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              closeDeleteModal();
-            }
-          }}
-        >
-          <div
-            ref={deleteModalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-holding-title"
-            className="w-full max-w-md rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft"
-          >
-            <h3 id="delete-holding-title" className="text-lg font-semibold tracking-tight text-brand-text">Delete Holding</h3>
-            <p className="mt-2 text-sm text-brand-muted">
-              Are you sure you want to delete
-              {" "}
-              <span className="font-semibold text-brand-text">"{holdingPendingDelete.instrumentName}"</span>
-              ?
-              This action cannot be undone.
-            </p>
+      <ConfirmationModal
+        isOpen={Boolean(holdingPendingDelete)}
+        title="Delete Holding"
+        message={holdingPendingDelete
+          ? `Are you sure you want to delete "${holdingPendingDelete.instrumentName}"? This action cannot be undone.`
+          : ""}
+        confirmLabel="Delete"
+        variant="danger"
+        isProcessing={Boolean(holdingPendingDelete && deletingHoldingId === holdingPendingDelete._id)}
+        errorMessage={deleteModalError}
+        onCancel={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+        ariaLabelledBy="delete-holding-title"
+      />
 
-            {deleteModalError ? <p className="mt-3 text-sm font-medium text-rose-600">{deleteModalError}</p> : null}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={closeDeleteModal}
-                disabled={deletingHoldingId === holdingPendingDelete._id}
-                className="rounded-xl border border-brand-line px-4 py-2 text-sm font-semibold text-brand-muted transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deletingHoldingId === holdingPendingDelete._id}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deletingHoldingId === holdingPendingDelete._id ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmationModal
+        isOpen={Boolean(bulkAssignmentPending)}
+        title="Confirm Assignment"
+        message={bulkAssignmentPending
+          ? `Assign ${bulkAssignmentPending.holdingIds.length} selected holding(s) to "${bulkAssignmentPending.goalName}"?`
+          : ""}
+        confirmLabel="Confirm"
+        variant="primary"
+        isProcessing={isBulkAssigning}
+        onCancel={closeBulkAssignModal}
+        onConfirm={handleConfirmBulkAssignment}
+        ariaLabelledBy="bulk-assign-title"
+      />
     </section>
   );
 }
