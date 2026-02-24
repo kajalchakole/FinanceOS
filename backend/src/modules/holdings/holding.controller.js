@@ -1,4 +1,5 @@
 import Holding from "./holding.model.js";
+import mongoose from "mongoose";
 
 const notFoundError = (message) => {
   const error = new Error(message);
@@ -9,6 +10,12 @@ const notFoundError = (message) => {
 const holdingPopulate = {
   path: "goalId",
   select: "name"
+};
+
+const badRequestError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
 };
 
 export const createHolding = async (req, res, next) => {
@@ -58,6 +65,39 @@ export const updateHolding = async (req, res, next) => {
     }
 
     res.status(200).json(holding);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const bulkAssignHoldings = async (req, res, next) => {
+  try {
+    const { holdingIds, goalId } = req.body;
+
+    if (!Array.isArray(holdingIds) || holdingIds.length === 0) {
+      throw badRequestError("holdingIds must be a non-empty array");
+    }
+
+    const uniqueHoldingIds = [...new Set(holdingIds)];
+    const hasInvalidHoldingId = uniqueHoldingIds.some((holdingId) => !mongoose.Types.ObjectId.isValid(holdingId));
+
+    if (hasInvalidHoldingId) {
+      throw badRequestError("holdingIds contains invalid id");
+    }
+
+    if (goalId !== null && goalId !== undefined && !mongoose.Types.ObjectId.isValid(goalId)) {
+      throw badRequestError("goalId must be a valid id or null");
+    }
+
+    const updateResult = await Holding.updateMany(
+      { _id: { $in: uniqueHoldingIds } },
+      { $set: { goalId: goalId ?? null } }
+    );
+
+    res.status(200).json({
+      message: "Holdings updated",
+      updatedCount: updateResult.modifiedCount
+    });
   } catch (error) {
     next(error);
   }

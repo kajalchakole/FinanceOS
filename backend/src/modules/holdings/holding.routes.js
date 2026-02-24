@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  bulkAssignHoldings,
   createHolding,
   deleteHolding,
   getHoldingById,
@@ -10,6 +11,7 @@ import {
 const holdingRouter = Router();
 
 holdingRouter.post("/", createHolding);
+holdingRouter.patch("/bulk-assign", bulkAssignHoldings);
 holdingRouter.get("/", getHoldings);
 holdingRouter.get("/:id", getHoldingById);
 holdingRouter.put("/:id", updateHolding);

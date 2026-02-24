@@ -9,17 +9,31 @@ function DashboardPage() {
 
   useEffect(() => {
     const fetchDashboard = async () => {
+      setError("");
       try {
         const response = await api.get("/dashboard");
         setSummary(response.data);
       } catch (requestError) {
         setError(requestError.response?.data?.message || "Unable to load dashboard data");
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    fetchDashboard();
+    const loadDashboard = async () => {
+      setIsLoading(true);
+      await fetchDashboard();
+      setIsLoading(false);
+    };
+
+    const handleDashboardRefresh = () => {
+      fetchDashboard();
+    };
+
+    loadDashboard();
+    window.addEventListener("dashboard:refresh", handleDashboardRefresh);
+
+    return () => {
+      window.removeEventListener("dashboard:refresh", handleDashboardRefresh);
+    };
   }, []);
 
   const formatCurrency = (value) => `\u20B9${Number(value || 0).toLocaleString("en-IN", {

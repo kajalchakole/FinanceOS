@@ -16,6 +16,16 @@ function TopHeader() {
     };
 
     fetchNetWorth();
+
+    const handleDashboardRefresh = () => {
+      fetchNetWorth();
+    };
+
+    window.addEventListener("dashboard:refresh", handleDashboardRefresh);
+
+    return () => {
+      window.removeEventListener("dashboard:refresh", handleDashboardRefresh);
+    };
   }, []);
 
   const formattedNetWorth = `\u20B9${Number(netWorth || 0).toLocaleString("en-IN", {
