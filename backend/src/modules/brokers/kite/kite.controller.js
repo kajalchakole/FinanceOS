@@ -1,4 +1,4 @@
-import { connectKiteWithRequestToken, getKiteConnectUrl } from "./kite.service.js";
+import { connectKiteWithRequestToken, getKiteConnectUrl, syncKiteHoldings } from "./kite.service.js";
 
 export const redirectToKiteLogin = async (req, res, next) => {
   try {
@@ -16,6 +16,19 @@ export const handleKiteCallback = async (req, res, next) => {
 
     res.status(200).json({
       message: "Zerodha connected successfully"
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const syncKiteHoldingsController = async (req, res, next) => {
+  try {
+    const count = await syncKiteHoldings();
+
+    res.status(200).json({
+      message: "Holdings synced successfully",
+      count
     });
   } catch (error) {
     next(error);
