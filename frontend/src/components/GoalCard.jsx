@@ -24,7 +24,11 @@ function GoalCard({ goal, onDelete, isDeleting = false }) {
     <article className="rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold tracking-tight text-brand-text">{goal.name}</h3>
+          <h3 className="text-lg font-semibold tracking-tight text-brand-text">
+            <Link to={`/goals/${goal._id}`} className="transition hover:text-slate-700">
+              {goal.name}
+            </Link>
+          </h3>
           <p className="mt-1 text-sm capitalize text-brand-muted">{goal.type}</p>
         </div>
         <div className="flex flex-col items-end gap-2">

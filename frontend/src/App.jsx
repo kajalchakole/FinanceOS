@@ -5,6 +5,7 @@ import AppLayout from "./layout/AppLayout";
 import AddHoldingPage from "./pages/AddHolding";
 import CreateGoalPage from "./pages/CreateGoal";
 import DashboardPage from "./pages/Dashboard";
+import GoalDetailPage from "./pages/GoalDetail";
 import GoalsPage from "./pages/Goals";
 import HoldingsPage from "./pages/Holdings";
 import SettingsPage from "./pages/Settings";
@@ -16,6 +17,7 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/goals/:id" element={<GoalDetailPage />} />
         <Route path="/goals/new" element={<CreateGoalPage />} />
         <Route path="/goals/:id/edit" element={<CreateGoalPage />} />
         <Route path="/holdings" element={<HoldingsPage />} />

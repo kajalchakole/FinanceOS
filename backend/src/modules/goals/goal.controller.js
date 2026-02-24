@@ -1,4 +1,5 @@
 import Goal from "./goal.model.js";
+import Holding from "../holdings/holding.model.js";
 import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 
 const notFoundError = (message) => {
@@ -76,6 +77,39 @@ export const getGoalById = async (req, res, next) => {
     }
 
     res.status(200).json(goal);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGoalDetail = async (req, res, next) => {
+  try {
+    const goal = await Goal.findById(req.params.id);
+
+    if (!goal) {
+      throw notFoundError("Goal not found");
+    }
+
+    const goalData = goal.toObject();
+    const linkedHoldings = await Holding.find({ goalId: goal._id }).sort({ createdAt: -1 });
+    const totalAllocated = linkedHoldings.reduce(
+      (sum, holding) => sum + (Number(holding.quantity || 0) * Number(holding.currentPrice || 0)),
+      0
+    );
+    const projection = calculateProjection(goalData, totalAllocated);
+
+    const futureRequired = Number(projection.futureRequired || 0);
+    const allocationPercent = futureRequired > 0
+      ? (totalAllocated / futureRequired) * 100
+      : 0;
+
+    res.status(200).json({
+      goal: goalData,
+      projection,
+      linkedHoldings,
+      totalAllocated,
+      allocationPercent
+    });
   } catch (error) {
     next(error);
   }
