@@ -16,6 +16,16 @@ const holdingSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  brokerAccountId: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  folioNumber: {
+    type: String,
+    default: null,
+    trim: true
+  },
   quantity: {
     type: Number,
     required: true

@@ -67,7 +67,8 @@ function SyncStatus() {
       return "Checking";
     }
 
-    const connectedBrokers = visibleBrokers.filter((broker) => broker.connected);
+    const connectedBrokers = visibleBrokers
+      .filter((broker) => broker.connected && broker.name !== "manual");
 
     if (connectedBrokers.length === 0) {
       return "Not Connected";

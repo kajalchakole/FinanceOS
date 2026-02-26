@@ -3,41 +3,22 @@ import crypto from "crypto";
 
 import Holding from "../../holdings/holding.model.js";
 import BrokerAuth from "../brokerAuth.model.js";
+import {
+  brokerNotConnectedError,
+  brokerSessionExpiredError,
+  brokerSyncFailedError
+} from "../broker.errors.js";
 
 const KITE_LOGIN_URL = "https://kite.zerodha.com/connect/login";
 const KITE_SESSION_URL = "https://api.kite.trade/session/token";
 const KITE_HOLDINGS_URL = "https://api.kite.trade/portfolio/holdings";
 const KITE_MF_HOLDINGS_URL = "https://api.kite.trade/mf/holdings";
 
-const internalServerError = (message) => {
-  const error = new Error(message);
-  error.statusCode = 500;
-  return error;
-};
-
-const badRequestError = (message) => {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-};
-
-const unauthorizedError = (message) => {
-  const error = new Error(message);
-  error.statusCode = 401;
-  return error;
-};
-
-const badGatewayError = (message) => {
-  const error = new Error(message);
-  error.statusCode = 502;
-  return error;
-};
-
 const getApiKey = () => {
   const apiKey = process.env.KITE_API_KEY;
 
   if (!apiKey) {
-    throw internalServerError("KITE_API_KEY is not configured");
+    throw brokerNotConnectedError("kite", "KITE_API_KEY is not configured");
   }
 
   return apiKey;
@@ -50,14 +31,14 @@ export const getKiteConnectUrl = () => {
 
 export const connectKiteWithRequestToken = async (requestToken) => {
   if (!requestToken) {
-    throw badRequestError("request_token is required");
+    throw brokerNotConnectedError("kite", "request_token is required");
   }
 
   const apiKey = getApiKey();
   const apiSecret = process.env.KITE_API_SECRET;
 
   if (!apiSecret) {
-    throw internalServerError("KITE_API_SECRET is not configured");
+    throw brokerNotConnectedError("kite", "KITE_API_SECRET is not configured");
   }
 
   const checksum = crypto
@@ -85,13 +66,13 @@ export const connectKiteWithRequestToken = async (requestToken) => {
       ? error.response?.data?.message || error.message
       : "Unknown error";
 
-    throw badGatewayError(`Kite token exchange failed: ${kiteMessage}`);
+    throw brokerSyncFailedError("kite", `Kite token exchange failed: ${kiteMessage}`, 502);
   }
 
   const accessToken = response?.data?.data?.access_token;
 
   if (!accessToken) {
-    throw badGatewayError("Unable to retrieve access token from Zerodha");
+    throw brokerSyncFailedError("kite", "Unable to retrieve access token from Zerodha", 502);
   }
 
   await BrokerAuth.findOneAndUpdate(
@@ -138,7 +119,7 @@ export const syncKiteHoldings = async () => {
   const brokerAuth = await BrokerAuth.findOne({ broker: "kite" });
 
   if (!brokerAuth) {
-    throw badRequestError("Not Connected");
+    throw brokerNotConnectedError("kite", "Kite not connected. Please connect broker first.");
   }
 
   console.info("[Kite Sync] Starting holdings sync for broker=kite");
@@ -162,14 +143,14 @@ export const syncKiteHoldings = async () => {
     });
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 403) {
-      throw unauthorizedError("Zerodha session expired. Please reconnect.");
+      throw brokerSessionExpiredError("kite", "Zerodha session expired. Please reconnect.");
     }
 
     const kiteMessage = axios.isAxiosError(error)
       ? error.response?.data?.message || error.message
       : "Unknown error";
 
-    throw badGatewayError(`Kite holdings fetch failed: ${kiteMessage}`);
+    throw brokerSyncFailedError("kite", `Kite holdings fetch failed: ${kiteMessage}`, 502);
   }
 
   const holdings = Array.isArray(response?.data?.data) ? response.data.data : [];

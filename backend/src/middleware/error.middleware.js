@@ -7,6 +7,7 @@ export const notFoundHandler = (req, res) => {
 export const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || "Internal server error";
+  const responsePayload = { message };
 
   if (err.code === 11000) {
     statusCode = 409;
@@ -25,7 +26,15 @@ export const errorHandler = (err, req, res, next) => {
     message = "Invalid resource id";
   }
 
-  res.status(statusCode).json({
-    message
-  });
+  responsePayload.message = message;
+
+  if (typeof err.code === "string") {
+    responsePayload.code = err.code;
+  }
+
+  if (typeof err.broker === "string") {
+    responsePayload.broker = err.broker;
+  }
+
+  res.status(statusCode).json(responsePayload);
 };

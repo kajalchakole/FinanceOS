@@ -7,7 +7,6 @@ import goalRouter from "./modules/goals/goal.routes.js";
 import dashboardRouter from "./modules/dashboard/dashboard.routes.js";
 import holdingRouter from "./modules/holdings/holding.routes.js";
 import brokerRouter from "./modules/brokers/broker.routes.js";
-import kiteRouter from "./modules/brokers/kite/kite.routes.js";
 import portfolioRouter from "./modules/portfolio/portfolio.routes.js";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 
@@ -15,6 +14,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 app.use(healthRouter);
@@ -22,7 +22,6 @@ app.use("/api/goals", goalRouter);
 app.use("/api/holdings", holdingRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/brokers", brokerRouter);
-app.use("/api/brokers/kite", kiteRouter);
 app.use("/api/portfolio", portfolioRouter);
 
 app.use(notFoundHandler);

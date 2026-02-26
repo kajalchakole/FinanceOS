@@ -1,11 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
+import { usePortfolio } from "../context/PortfolioContext";
 import api from "../services/api";
 
 function DashboardPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { refreshPortfolio } = usePortfolio();
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reconnectToast, setReconnectToast] = useState("");
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -46,6 +52,41 @@ function DashboardPage() {
       window.removeEventListener("portfolio:refreshed", handlePortfolioRefreshed);
     };
   }, []);
+
+  useEffect(() => {
+    if (!reconnectToast) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setReconnectToast("");
+    }, 2600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [reconnectToast]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const reconnectedBroker = params.get("reconnected");
+
+    if (!reconnectedBroker) {
+      return;
+    }
+
+    setReconnectToast(`${reconnectedBroker} reconnected. Syncing portfolio...`);
+    refreshPortfolio().catch(() => {});
+    params.delete("reconnected");
+    const nextSearch = params.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : ""
+      },
+      { replace: true }
+    );
+  }, [location.pathname, location.search, navigate, refreshPortfolio]);
 
   const formatCurrency = (value) => `\u20B9${Number(value || 0).toLocaleString("en-IN", {
     maximumFractionDigits: 0
@@ -111,6 +152,12 @@ function DashboardPage() {
           </article>
         ))}
       </div>
+
+      {reconnectToast ? (
+        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-soft">
+          {reconnectToast}
+        </div>
+      ) : null}
     </section>
   );
 }

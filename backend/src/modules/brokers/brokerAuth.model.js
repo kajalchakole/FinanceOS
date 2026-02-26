@@ -10,7 +10,11 @@ const brokerAuthSchema = new mongoose.Schema({
   },
   accessToken: {
     type: String,
-    required: true
+    default: null
+  },
+  sessionToken: {
+    type: String,
+    default: null
   },
   generatedAt: {
     type: Date,
@@ -19,6 +23,10 @@ const brokerAuthSchema = new mongoose.Schema({
   lastSyncAt: {
     type: Date,
     default: null
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 });
 
