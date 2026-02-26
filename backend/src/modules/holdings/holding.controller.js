@@ -18,11 +18,29 @@ const badRequestError = (message) => {
   return error;
 };
 
+const enrichHoldingMetrics = (holding) => {
+  const quantity = Number(holding?.quantity || 0);
+  const averagePrice = Number(holding?.averagePrice || 0);
+  const currentPrice = Number(holding?.currentPrice || 0);
+  const investedValue = quantity * averagePrice;
+  const currentValue = quantity * currentPrice;
+  const profit = currentValue - investedValue;
+  const returnPercent = investedValue > 0 ? (profit / investedValue) * 100 : 0;
+
+  return {
+    ...holding,
+    investedValue,
+    currentValue,
+    profit,
+    returnPercent
+  };
+};
+
 export const createHolding = async (req, res, next) => {
   try {
     const holding = await Holding.create(req.body);
     const populatedHolding = await Holding.findById(holding._id).populate(holdingPopulate);
-    res.status(201).json(populatedHolding);
+    res.status(201).json(enrichHoldingMetrics(populatedHolding.toObject()));
   } catch (error) {
     next(error);
   }
@@ -33,7 +51,7 @@ export const getHoldings = async (req, res, next) => {
     const holdings = await Holding.find()
       .sort({ createdAt: -1 })
       .populate(holdingPopulate);
-    res.status(200).json(holdings);
+    res.status(200).json(holdings.map((holding) => enrichHoldingMetrics(holding.toObject())));
   } catch (error) {
     next(error);
   }
@@ -47,7 +65,7 @@ export const getHoldingById = async (req, res, next) => {
       throw notFoundError("Holding not found");
     }
 
-    res.status(200).json(holding);
+    res.status(200).json(enrichHoldingMetrics(holding.toObject()));
   } catch (error) {
     next(error);
   }
@@ -64,7 +82,7 @@ export const updateHolding = async (req, res, next) => {
       throw notFoundError("Holding not found");
     }
 
-    res.status(200).json(holding);
+    res.status(200).json(enrichHoldingMetrics(holding.toObject()));
   } catch (error) {
     next(error);
   }

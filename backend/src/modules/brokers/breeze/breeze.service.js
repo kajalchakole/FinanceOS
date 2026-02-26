@@ -46,6 +46,28 @@ const getErrorMessage = (error) => {
 };
 
 const getHoldingItems = (response) => {
+  const findArraysDeep = (value, depth = 0) => {
+    if (depth > 6 || value === null || value === undefined) {
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      return [value];
+    }
+
+    if (typeof value !== "object") {
+      return [];
+    }
+
+    const nestedArrays = [];
+
+    for (const nestedValue of Object.values(value)) {
+      nestedArrays.push(...findArraysDeep(nestedValue, depth + 1));
+    }
+
+    return nestedArrays;
+  };
+
   if (!response) {
     return [];
   }
@@ -66,12 +88,166 @@ const getHoldingItems = (response) => {
     return response.data;
   }
 
+  const nestedArrays = findArraysDeep(response)
+    .filter((arrayValue) => arrayValue.length > 0)
+    .sort((left, right) => right.length - left.length);
+
+  for (const candidate of nestedArrays) {
+    if (candidate.some((row) => row && typeof row === "object")) {
+      return candidate;
+    }
+  }
+
   return [];
 };
 
 const toNumber = (value) => {
+  if (value === null || value === undefined) {
+    return 0;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === "string") {
+    const cleanedValue = value
+      .replace(/,/g, "")
+      .replace(/[^\d.-]/g, "")
+      .trim();
+
+    if (!cleanedValue) {
+      return 0;
+    }
+
+    const numericValue = Number(cleanedValue);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  }
+
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+const toCanonicalKey = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const getValueByFlexibleKey = (item, key) => {
+  if (!item || typeof item !== "object") {
+    return undefined;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(item, key)) {
+    return item[key];
+  }
+
+  const targetKey = toCanonicalKey(key);
+
+  for (const [itemKey, itemValue] of Object.entries(item)) {
+    if (toCanonicalKey(itemKey) === targetKey) {
+      return itemValue;
+    }
+  }
+
+  return undefined;
+};
+
+const pickFirstNumericValue = (item, keys = [], options = {}) => {
+  const { allowNegative = false } = options;
+
+  for (const key of keys) {
+    const value = getValueByFlexibleKey(item, key);
+
+    if (value === null || value === undefined || value === "") {
+      continue;
+    }
+
+    const numericValue = toNumber(value);
+
+    if (
+      numericValue > 0
+      || (allowNegative && numericValue < 0)
+      || String(value).trim() === "0"
+      || String(value).trim() === "0.0"
+      || String(value).trim() === "0.00"
+    ) {
+      return numericValue;
+    }
+  }
+
+  return 0;
+};
+
+const pickFirstNumericKeyValue = (item, keys = [], options = {}) => {
+  const { allowNegative = false } = options;
+
+  for (const key of keys) {
+    const value = getValueByFlexibleKey(item, key);
+
+    if (value === null || value === undefined || value === "") {
+      continue;
+    }
+
+    const numericValue = toNumber(value);
+
+    if (
+      numericValue > 0
+      || (allowNegative && numericValue < 0)
+      || String(value).trim() === "0"
+      || String(value).trim() === "0.0"
+      || String(value).trim() === "0.00"
+    ) {
+      return {
+        key,
+        value: numericValue,
+        raw: value
+      };
+    }
+  }
+
+  return null;
+};
+
+const hasAnyValueForKeys = (item, keys = []) => keys.some((key) => {
+  const value = getValueByFlexibleKey(item, key);
+  return value !== null && value !== undefined && String(value).trim() !== "";
+});
+
+const upsertByQuality = (rows) => {
+  const map = new Map();
+
+  for (const row of rows) {
+    const sourceCodeKey = String(row.sourceStockCode || "").trim().toLowerCase();
+    const key = sourceCodeKey
+      ? [
+        sourceCodeKey,
+        String(row.instrumentType || "").toLowerCase(),
+        String(row.brokerAccountId || "").toLowerCase(),
+        String(row.folioNumber || "").toLowerCase()
+      ].join("::")
+      : [
+        String(row.instrumentName || "").toLowerCase(),
+        String(row.instrumentType || "").toLowerCase(),
+        String(row.brokerAccountId || "").toLowerCase(),
+        String(row.folioNumber || "").toLowerCase()
+      ].join("::");
+
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, row);
+      continue;
+    }
+
+    // Demat + portfolio may return same holding; keep a single "best" row.
+    map.set(key, {
+      ...existing,
+      quantity: Math.max(toNumber(existing.quantity), toNumber(row.quantity)),
+      averagePrice: Math.max(toNumber(existing.averagePrice), toNumber(row.averagePrice)),
+      currentPrice: Math.max(toNumber(existing.currentPrice), toNumber(row.currentPrice)),
+      sourceStockCode: existing.sourceStockCode || row.sourceStockCode || null
+    });
+  }
+
+  return [...map.values()];
 };
 
 const inferInstrumentType = (item) => {
@@ -124,17 +300,350 @@ const getInstrumentName = (item) => (
   || "Unknown Instrument"
 );
 
-const normalizeBreezeHolding = (item) => ({
-  broker: "breeze",
-  brokerAccountId: item?.client_code || item?.account_id || null,
-  folioNumber: item?.folio_number || item?.folio || null,
-  instrumentName: getInstrumentName(item),
-  instrumentType: inferInstrumentType(item),
-  quantity: toNumber(item?.quantity ?? item?.available_quantity ?? item?.total_quantity ?? item?.units),
-  averagePrice: toNumber(item?.average_price ?? item?.avg_price ?? item?.cost_price),
-  currentPrice: toNumber(item?.current_price ?? item?.ltp ?? item?.last_price ?? item?.close),
-  goalId: null
-});
+const deriveStockCode = (item, instrumentName) => {
+  const explicitCode = item?.stock_code || item?.symbol || item?.tradingsymbol || item?.scrip_code;
+
+  if (explicitCode) {
+    return String(explicitCode).trim().toUpperCase();
+  }
+
+  const name = String(instrumentName || "").trim().toUpperCase();
+
+  if (!name) {
+    return null;
+  }
+
+  const sanitized = name.replace(/[^A-Z0-9]/g, "");
+  return sanitized || null;
+};
+
+const getHoldingKey = (instrumentName, instrumentType) => (
+  `${String(instrumentName || "").trim().toLowerCase()}::${String(instrumentType || "").trim().toLowerCase()}`
+);
+
+const extractQuotePrice = (quoteResponse) => {
+  const rows = getHoldingItems(quoteResponse);
+  const row = rows[0] || quoteResponse?.Success || quoteResponse?.success || quoteResponse?.data || {};
+
+  return pickFirstNumericValue(row, [
+    "ltp",
+    "last_price",
+    "last_traded_price",
+    "close",
+    "current_price",
+    "market_price",
+    "price"
+  ]);
+};
+
+const getNameRows = (nameResponse) => {
+  if (!nameResponse || nameResponse instanceof Map) {
+    return [];
+  }
+
+  if (Array.isArray(nameResponse)) {
+    return nameResponse;
+  }
+
+  if (Array.isArray(nameResponse.Success)) {
+    return nameResponse.Success;
+  }
+
+  if (Array.isArray(nameResponse.success)) {
+    return nameResponse.success;
+  }
+
+  if (Array.isArray(nameResponse.data)) {
+    return nameResponse.data;
+  }
+
+  return [nameResponse];
+};
+
+const extractNameMapping = (nameResponse) => {
+  const rows = getNameRows(nameResponse);
+
+  for (const row of rows) {
+    const isecStockCode = String(
+      row?.isec_stock_code
+        || row?.isecStockCode
+        || row?.stock_code
+        || row?.stockCode
+        || ""
+    ).trim();
+
+    const exchangeStockCode = String(
+      row?.exchange_stock_code
+        || row?.exchangeStockCode
+        || row?.symbol
+        || ""
+    ).trim();
+
+    if (!isecStockCode && !exchangeStockCode) {
+      continue;
+    }
+
+    return {
+      isecStockCode: isecStockCode || null,
+      exchangeStockCode: exchangeStockCode || null
+    };
+  }
+
+  return null;
+};
+
+const averagePriceDebugKeys = [
+  "averagePrice",
+  "average_price",
+  "avgprice",
+  "average_cost",
+  "average_cost_price",
+  "avg_cost",
+  "avgcost",
+  "avgcostprice",
+  "averageCost",
+  "avg_price",
+  "avg_cost_price",
+  "avgCostPrice",
+  "avg_buy_price",
+  "avgBuyPrice",
+  "buy_avg_price",
+  "buyAvgPrice",
+  "cost_price",
+  "costPrice",
+  "avg_cost",
+  "avgCost",
+  "acquisition_price",
+  "acquisitionPrice",
+  "cost_per_unit",
+  "costPerUnit",
+  "buy_price",
+  "buyPrice",
+  "purchase_price",
+  "purchasePrice",
+  "average_nav",
+  "averageNav",
+  "nav_purchase",
+  "navPurchase",
+  "acquisition_cost",
+  "acquisitionCost",
+  "buy_rate",
+  "buyRate",
+  "avg_rate",
+  "avgRate",
+  "cost_basis",
+  "costBasis",
+  "avg_buy_cost",
+  "avgBuyCost",
+  "nse_avg_price",
+  "nseAvgPrice",
+  "bse_avg_price",
+  "nse_average_price",
+  "bse_average_price",
+  "average_buy_price",
+  "avg_purchase_price",
+  "avgPurchasePrice",
+  "purchase_rate",
+  "purchaseRate",
+  "avg_buy_rate",
+  "avgBuyRate",
+  "average_buy_rate",
+  "averageBuyRate",
+  "book_price",
+  "bookPrice",
+  "booked_price",
+  "bookedPrice",
+  "acquisition_rate",
+  "acquisitionRate",
+  "nse_buy_avg_price",
+  "bse_buy_avg_price"
+];
+
+const normalizeBreezeHolding = (item) => {
+  const instrumentName = getInstrumentName(item);
+  const quantity = pickFirstNumericValue(item, [
+    "quantity",
+    "qty",
+    "net_qty",
+    "netQty",
+    "holding_qty",
+    "holdingQty",
+    "available_qty",
+    "availableQty",
+    "free_qty",
+    "freeQty",
+    "balance_qty",
+    "balanceQty",
+    "available_quantity",
+    "total_quantity",
+    "total_qty",
+    "totalQty",
+    "sellable_qty",
+    "sellableQty",
+    "remaining_qty",
+    "remainingQty",
+    "units",
+    "unit",
+    "available_units"
+  ]);
+
+  const explicitAveragePriceKeys = averagePriceDebugKeys;
+  const explicitAveragePrice = pickFirstNumericValue(item, explicitAveragePriceKeys);
+
+  const explicitCurrentPriceKeys = [
+    "currentPrice",
+    "current_price",
+    "ltp",
+    "last_price",
+    "lastPrice",
+    "close",
+    "market_price",
+    "marketPrice",
+    "current_market_price",
+    "currentMarketPrice",
+    "last_traded_price",
+    "lastTradedPrice",
+    "ltp_price",
+    "ltpPrice",
+    "closing_price",
+    "closingPrice",
+    "nav_value",
+    "navValue",
+    "nav"
+  ];
+  const explicitCurrentPrice = pickFirstNumericValue(item, explicitCurrentPriceKeys);
+
+  // Keep this strict: ambiguous keys (like generic book/value) can map to current value.
+  const totalInvestedValueKeys = [
+    "investedValue",
+    "invested_value",
+    "investment_value",
+    "investmentValue",
+    "investedAmount",
+    "invested_amount",
+    "invested_amt",
+    "invested_val",
+    "investedValueNet",
+    "total_investment",
+    "totalInvestment",
+    "net_investment",
+    "netInvestment",
+    "cost_value",
+    "costValue",
+    "cost_amount",
+    "costAmount",
+    "total_cost",
+    "totalCost",
+    "book_cost",
+    "bookCost",
+    "holding_cost",
+    "holdingCost",
+    "buy_value",
+    "buyValue",
+    "buy_val",
+    "buy_amount",
+    "buyAmount",
+    "purchase_value",
+    "purchaseValue",
+    "purchase_amount",
+    "purchaseAmount",
+    "purchase_cost",
+    "purchaseCost",
+    "book_value",
+    "bookValue",
+    "booked_cost",
+    "bookedCost",
+    "booked_value",
+    "bookedValue"
+  ];
+  const totalInvestedValue = pickFirstNumericValue(item, totalInvestedValueKeys);
+  const hasInvestedValue = hasAnyValueForKeys(item, totalInvestedValueKeys);
+
+  const totalCurrentValueKeys = [
+    "marketValue",
+    "market_value",
+    "market_val",
+    "marketVal",
+    "current_value",
+    "currentValue",
+    "current_val",
+    "currentVal",
+    "present_value",
+    "presentValue",
+    "latest_value",
+    "latestValue",
+    "holding_value",
+    "holdingValue",
+    "total_value",
+    "totalValue",
+    "valuation",
+    "value"
+  ];
+  const totalCurrentValue = pickFirstNumericValue(item, totalCurrentValueKeys);
+
+  const unrealizedProfitKeys = [
+    "unrealizedPnl",
+    "unrealized_pnl",
+    "unrealisedPnl",
+    "unrealised_pnl",
+    "unrealizedProfit",
+    "unrealized_profit",
+    "profitLoss",
+    "profit_loss",
+    "gainLoss",
+    "gain_loss",
+    "unrealized_profit_loss",
+    "unrealised_profit_loss",
+    "unrealized_gain_loss",
+    "unrealised_gain_loss",
+    "pnl",
+    "mtm"
+  ];
+  const hasUnrealizedProfit = hasAnyValueForKeys(item, unrealizedProfitKeys);
+  const unrealizedProfit = pickFirstNumericValue(unrealizedProfitKeys.length ? item : {}, unrealizedProfitKeys, { allowNegative: true });
+
+  const derivedAveragePrice = hasInvestedValue && quantity > 0 ? (totalInvestedValue / quantity) : 0;
+  const derivedCurrentPrice = quantity > 0 ? (totalCurrentValue / quantity) : 0;
+  const resolvedCurrentPrice = explicitCurrentPrice > 0 ? explicitCurrentPrice : derivedCurrentPrice;
+  const derivedAveragePriceFromPnl = hasUnrealizedProfit && quantity > 0 && totalCurrentValue > 0
+    ? ((totalCurrentValue - unrealizedProfit) / quantity)
+    : 0;
+  const derivedAveragePriceFromCurrentAndPnl = hasUnrealizedProfit && quantity > 0 && resolvedCurrentPrice > 0
+    ? (resolvedCurrentPrice - (unrealizedProfit / quantity))
+    : 0;
+  const resolvedAveragePrice = explicitAveragePrice > 0
+    ? explicitAveragePrice
+    : derivedAveragePrice > 0
+      ? derivedAveragePrice
+      : derivedAveragePriceFromPnl > 0
+        ? derivedAveragePriceFromPnl
+        : derivedAveragePriceFromCurrentAndPnl > 0
+          ? derivedAveragePriceFromCurrentAndPnl
+        : 0;
+  const averagePriceSource = explicitAveragePrice > 0
+    ? "explicit-average"
+    : derivedAveragePrice > 0
+      ? "invested-value/quantity"
+      : derivedAveragePriceFromPnl > 0
+        ? "current-value-pnl/quantity"
+        : derivedAveragePriceFromCurrentAndPnl > 0
+          ? "current-price-pnl/quantity"
+          : "unresolved";
+
+  return {
+    broker: "breeze",
+    brokerAccountId: item?.client_code || item?.account_id || null,
+    folioNumber: item?.folio_number || item?.folio || null,
+    instrumentName,
+    instrumentType: inferInstrumentType(item),
+    sourceStockCode: deriveStockCode(item, instrumentName),
+    averagePriceSource,
+    quantity,
+    averagePrice: resolvedAveragePrice,
+    currentPrice: resolvedCurrentPrice,
+    goalId: null
+  };
+};
 
 const buildCashHolding = (fundsResponse) => {
   const fundsData = Array.isArray(fundsResponse?.Success)
@@ -236,20 +745,249 @@ export const syncBreezeHoldings = async () => {
   }
 
   try {
-    const [dematResponse, portfolioResponse, fundsResponse] = await Promise.all([
+    const [dematResponse, portfolioNseResponse, portfolioBseResponse, fundsResponse] = await Promise.all([
       breeze.getDematHoldings(),
-      breeze.getPortfolioHoldings({}),
+      breeze.getPortfolioHoldings({ exchangeCode: "NSE" }),
+      breeze.getPortfolioHoldings({ exchangeCode: "BSE" }),
       breeze.getFunds()
     ]);
 
+    const mergedPortfolioResponse = [
+      ...getHoldingItems(portfolioNseResponse),
+      ...getHoldingItems(portfolioBseResponse)
+    ];
+
     if (process.env.NODE_ENV !== "production") {
-      const sample = getHoldingItems(dematResponse)[0] || getHoldingItems(portfolioResponse)[0] || null;
+      const sample = getHoldingItems(dematResponse)[0] || mergedPortfolioResponse[0] || null;
       console.debug("[Breeze Sync] Sample holding shape:", sample);
+      const portfolioSample = mergedPortfolioResponse[0] || null;
+      console.debug("[Breeze Sync] Portfolio sample:", portfolioSample);
     }
 
     const dematItems = getHoldingItems(dematResponse).filter(isEligiblePhaseOneHolding);
-    const portfolioItems = getHoldingItems(portfolioResponse).filter(isEligiblePhaseOneHolding);
-    const normalizedHoldings = [...dematItems, ...portfolioItems].map(normalizeBreezeHolding);
+    const portfolioItems = mergedPortfolioResponse.filter(isEligiblePhaseOneHolding);
+
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[Breeze Sync] Parsed holding rows", {
+        dematCount: dematItems.length,
+        portfolioCount: portfolioItems.length
+      });
+
+      const rawAverageDebug = [...dematItems, ...portfolioItems]
+        .map((item) => {
+          const match = pickFirstNumericKeyValue(item, averagePriceDebugKeys);
+
+          return {
+            source: dematItems.includes(item) ? "demat" : "portfolio",
+            stockCode: String(item?.stock_code || item?.symbol || item?.tradingsymbol || "").trim() || null,
+            instrumentName: String(
+              item?.security_name || item?.stock_name || item?.symbol || item?.tradingsymbol || item?.stock_code || ""
+            ).trim() || null,
+            averagePriceKey: match?.key || null,
+            averagePriceRawValue: match?.raw ?? null,
+            averagePriceNumericValue: match?.value ?? null
+          };
+        });
+
+      console.debug("[Breeze Sync] Raw API average-price snapshot", rawAverageDebug);
+    }
+    const existingHoldings = await Holding.find(
+      { broker: "breeze" },
+      { instrumentName: 1, instrumentType: 1, averagePrice: 1, currentPrice: 1 }
+    ).lean();
+
+    const previousPriceByKey = existingHoldings.reduce((accumulator, row) => {
+      accumulator.set(getHoldingKey(row.instrumentName, row.instrumentType), {
+        averagePrice: toNumber(row.averagePrice),
+        currentPrice: toNumber(row.currentPrice)
+      });
+      return accumulator;
+    }, new Map());
+
+    const normalizedRows = [...dematItems, ...portfolioItems].map((item) => {
+      const normalized = normalizeBreezeHolding(item);
+      normalized.__debugRawItem = item;
+      normalized.__debugStockCode = item?.stock_code || item?.symbol || item?.tradingsymbol || null;
+      normalized.__debugSource = dematItems.includes(item) ? "demat" : "portfolio";
+      const key = getHoldingKey(normalized.instrumentName, normalized.instrumentType);
+      const previous = previousPriceByKey.get(key);
+
+      if (previous) {
+        if (normalized.averagePrice <= 0 && previous.averagePrice > 0) {
+          normalized.averagePrice = previous.averagePrice;
+          normalized.averagePriceSource = "previous-sync";
+        }
+
+        if (normalized.currentPrice <= 0 && previous.currentPrice > 0) {
+          normalized.currentPrice = previous.currentPrice;
+        }
+      }
+
+      return normalized;
+    });
+
+    const normalizedHoldings = upsertByQuality(normalizedRows);
+
+    if (process.env.NODE_ENV !== "production") {
+      const unresolvedAfterNormalize = normalizedRows
+        .filter((row) => row.instrumentType !== "Cash" && (row.currentPrice <= 0 || row.averagePrice <= 0))
+        .slice(0, 10)
+        .map((row) => ({
+          instrumentName: row.instrumentName,
+          source: row.__debugSource,
+          stockCode: row.sourceStockCode || row.__debugStockCode,
+          quantity: row.quantity,
+          averagePrice: row.averagePrice,
+          averagePriceSource: row.averagePriceSource,
+          currentPrice: row.currentPrice,
+          rawKeys: Object.keys(row.__debugRawItem || {})
+        }));
+
+      console.debug("[Breeze Sync] Normalized rows snapshot", {
+        totalRows: normalizedRows.length,
+        unresolvedCount: normalizedRows.filter(
+          (row) => row.instrumentType !== "Cash" && (row.currentPrice <= 0 || row.averagePrice <= 0)
+        ).length,
+        unresolvedSample: unresolvedAfterNormalize
+      });
+    }
+
+    for (const holding of normalizedHoldings) {
+      if (holding.instrumentType === "Cash") {
+        continue;
+      }
+
+      const stockCode = holding.sourceStockCode;
+
+      if (!stockCode) {
+        continue;
+      }
+
+      let quotePrice = 0;
+      const exchangeCandidates = ["NSE", "BSE", "NFO", "BFO"];
+
+      for (const exchangeCode of exchangeCandidates) {
+        try {
+          const quote = await breeze.getQuotes({
+            stockCode,
+            exchangeCode,
+            stock_code: stockCode,
+            exchange_code: exchangeCode
+          });
+          quotePrice = extractQuotePrice(quote);
+
+          if (quotePrice > 0) {
+            break;
+          }
+        } catch (error) {
+          quotePrice = 0;
+        }
+
+        // If direct quote failed, resolve mapped exchange symbol and retry quote once.
+        try {
+          const names = await breeze.getNames({
+            exchange: exchangeCode.toLowerCase(),
+            stockCode,
+            exchange_code: exchangeCode,
+            stock_code: stockCode
+          });
+          const mapped = extractNameMapping(names);
+
+          if (!mapped) {
+            continue;
+          }
+
+          const retryCodes = [mapped.exchangeStockCode, mapped.isecStockCode].filter(Boolean);
+
+          for (const retryStockCode of retryCodes) {
+            const retryQuote = await breeze.getQuotes({
+              stockCode: retryStockCode,
+              exchangeCode,
+              stock_code: retryStockCode,
+              exchange_code: exchangeCode
+            });
+            quotePrice = extractQuotePrice(retryQuote);
+
+            if (quotePrice > 0) {
+              break;
+            }
+          }
+
+          if (quotePrice > 0) {
+            break;
+          }
+        } catch (error) {
+          quotePrice = 0;
+        }
+      }
+
+      if (quotePrice > 0) {
+        holding.currentPrice = quotePrice;
+        if (process.env.NODE_ENV !== "production") {
+          console.debug("[Breeze Sync] Quote resolved", {
+            instrumentName: holding.instrumentName,
+            stockCode,
+            quotePrice,
+            quantity: holding.quantity,
+            averagePrice: holding.averagePrice,
+            currentPrice: holding.currentPrice
+          });
+        }
+      } else if (process.env.NODE_ENV !== "production") {
+        console.debug("[Breeze Sync] Price unresolved", {
+          instrumentName: holding.instrumentName,
+          instrumentType: holding.instrumentType,
+          stockCode
+        });
+      }
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      const unresolvedAverage = normalizedHoldings.find(
+        (holding) => holding.instrumentType !== "Cash" && holding.currentPrice > 0 && holding.averagePrice <= 0
+      );
+
+      if (unresolvedAverage) {
+        console.debug("[Breeze Sync] Average price unresolved for sample", {
+          instrumentName: unresolvedAverage.instrumentName,
+          stockCode: unresolvedAverage.sourceStockCode,
+          currentPrice: unresolvedAverage.currentPrice,
+          averagePrice: unresolvedAverage.averagePrice
+        });
+      }
+
+      const postMergeSnapshot = normalizedHoldings
+        .filter((holding) => holding.instrumentType !== "Cash")
+        .slice(0, 20)
+        .map((holding) => ({
+          instrumentName: holding.instrumentName,
+          stockCode: holding.sourceStockCode || holding.__debugStockCode,
+          quantity: holding.quantity,
+          averagePrice: holding.averagePrice,
+          averagePriceSource: holding.averagePriceSource,
+          currentPrice: holding.currentPrice,
+          source: holding.__debugSource
+        }));
+
+      console.debug("[Breeze Sync] Post-merge holdings snapshot", {
+        totalHoldings: normalizedHoldings.length,
+        pricedCount: normalizedHoldings.filter(
+          (holding) => holding.instrumentType !== "Cash" && holding.currentPrice > 0
+        ).length,
+        avgResolvedCount: normalizedHoldings.filter(
+          (holding) => holding.instrumentType !== "Cash" && holding.averagePrice > 0
+        ).length,
+        sample: postMergeSnapshot
+      });
+    }
+
+    for (const holding of normalizedHoldings) {
+      delete holding.__debugRawItem;
+      delete holding.__debugStockCode;
+      delete holding.__debugSource;
+      delete holding.sourceStockCode;
+      delete holding.averagePriceSource;
+    }
     const cashHolding = buildCashHolding(fundsResponse);
 
     if (cashHolding) {
