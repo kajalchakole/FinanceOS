@@ -1,3 +1,9 @@
+const brokerErrorMessages = {
+  BROKER_SESSION_EXPIRED: "Session expired. Please reconnect.",
+  BROKER_NOT_CONNECTED: "Broker not connected. Please connect first.",
+  BROKER_SYNC_FAILED: "Broker sync failed."
+};
+
 export const notFoundHandler = (req, res) => {
   res.status(404).json({
     message: `Route not found: ${req.method} ${req.originalUrl}`
@@ -30,10 +36,30 @@ export const errorHandler = (err, req, res, next) => {
 
   if (typeof err.code === "string") {
     responsePayload.code = err.code;
+
+    if (err.code === "BROKER_SESSION_EXPIRED") {
+      statusCode = 401;
+    }
+
+    if (err.code === "BROKER_NOT_CONNECTED") {
+      statusCode = 400;
+    }
+
+    if (err.code === "BROKER_SYNC_FAILED") {
+      statusCode = 500;
+    }
+
+    if (brokerErrorMessages[err.code]) {
+      responsePayload.message = brokerErrorMessages[err.code];
+    }
   }
 
   if (typeof err.broker === "string") {
     responsePayload.broker = err.broker;
+  }
+
+  if (process.env.NODE_ENV !== "production" && err?.details) {
+    responsePayload.details = String(err.details);
   }
 
   res.status(statusCode).json(responsePayload);

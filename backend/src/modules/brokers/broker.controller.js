@@ -4,7 +4,7 @@ import { isBreezeConnected } from "./breeze/breeze.service.js";
 import { brokerSyncFailedError } from "./broker.errors.js";
 import { brokerRegistry } from "./broker.registry.js";
 
-const supportedBrokers = ["kite", "breeze", "manual"];
+const supportedBrokers = ["kite", "breeze", "hdfc_investright", "manual"];
 
 const getBrokerService = (brokerName) => brokerRegistry[brokerName] || null;
 
@@ -18,11 +18,13 @@ const wrapUnknownBrokerError = (brokerName, error) => {
 
 export const getBrokers = async (req, res, next) => {
   try {
-    const [kiteAuth, breezeAuth, kiteHoldingsCount, breezeHoldingsCount, manualHoldingsCount] = await Promise.all([
+    const [kiteAuth, breezeAuth, hdfcAuth, kiteHoldingsCount, breezeHoldingsCount, hdfcHoldingsCount, manualHoldingsCount] = await Promise.all([
       BrokerAuth.findOne({ broker: "kite" }),
       BrokerAuth.findOne({ broker: "breeze" }),
+      BrokerAuth.findOne({ broker: "hdfc_investright" }),
       Holding.countDocuments({ broker: { $in: ["kite", "Zerodha"] } }),
       Holding.countDocuments({ broker: "breeze" }),
+      Holding.countDocuments({ broker: "hdfc_investright" }),
       Holding.countDocuments({ broker: "manual" })
     ]);
 
@@ -42,6 +44,15 @@ export const getBrokers = async (req, res, next) => {
           connected: isBreezeConnected(breezeAuth),
           lastSyncAt: breezeAuth?.lastSyncAt || null,
           holdingsCount: breezeHoldingsCount
+        };
+      }
+
+      if (brokerName === "hdfc_investright") {
+        return {
+          name: "hdfc_investright",
+          connected: Boolean(hdfcAuth?.accessToken),
+          lastSyncAt: hdfcAuth?.lastSyncAt || null,
+          holdingsCount: hdfcHoldingsCount
         };
       }
 

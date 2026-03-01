@@ -53,30 +53,26 @@ function BrokerSyncDrawer({
     });
   };
 
-  const handlePrimaryAction = async (broker) => {
-    const brokerState = stateByBroker[broker.name] || { mode: "idle", message: "" };
-    const shouldConnect = !broker.connected || brokerState.mode === "expired" || brokerState.mode === "not_connected";
+  const connectBroker = (brokerName) => {
+    window.location.href = getConnectUrl(brokerName);
+  };
 
-    if (shouldConnect) {
-      window.location.href = getConnectUrl(broker.name);
-      return;
-    }
-
+  const handleSyncAction = async (broker) => {
     setUiState(broker.name, { mode: "syncing", message: "" });
 
     try {
       await api.post(`/brokers/${broker.name}/sync`);
       setUiState(broker.name, { mode: "idle", message: "" });
       await onSyncSuccess(`${broker.name} sync completed`);
-      onClose();
       await onRefreshBrokers();
+      onClose();
     } catch (requestError) {
       const status = requestError.response?.status;
       const code = requestError.response?.data?.code;
       const message = requestError.response?.data?.message || "Sync failed";
 
       if (status === 401 || code === "BROKER_SESSION_EXPIRED") {
-        setUiState(broker.name, { mode: "expired", message });
+        setUiState(broker.name, { mode: "expired", message: "Session expired. Please reconnect." });
         return;
       }
 
@@ -99,26 +95,18 @@ function BrokerSyncDrawer({
     }
   };
 
-  const getButtonLabel = (broker) => {
+  const getSyncButtonLabel = (broker) => {
     const brokerState = stateByBroker[broker.name] || { mode: "idle" };
 
     if (brokerState.mode === "syncing") {
       return "Syncing...";
     }
 
-    if (brokerState.mode === "expired") {
-      return "Reconnect";
-    }
-
-    if (brokerState.mode === "not_connected") {
-      return broker.name === "breeze" ? "Update Env Token" : "Connect";
-    }
-
     if (brokerState.mode === "failed") {
       return "Try Again";
     }
 
-    return broker.connected ? "Sync Now" : "Connect";
+    return "Sync Now";
   };
 
   return (
@@ -145,6 +133,7 @@ function BrokerSyncDrawer({
         <div className="mt-6 space-y-4">
           {brokers.map((broker) => {
             const brokerState = stateByBroker[broker.name] || { mode: "idle", message: "" };
+            const shouldShowConnectOnly = !broker.connected || brokerState.mode === "expired" || brokerState.mode === "not_connected";
 
             return (
               <article key={broker.name} className="rounded-2xl border border-brand-line bg-white p-4">
@@ -161,14 +150,35 @@ function BrokerSyncDrawer({
                     ) : null}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handlePrimaryAction(broker)}
-                    disabled={brokerState.mode === "syncing"}
-                    className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {getButtonLabel(broker)}
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    {shouldShowConnectOnly ? (
+                      <button
+                        type="button"
+                        onClick={() => connectBroker(broker.name)}
+                        className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        {broker.connected ? "Reconnect" : "Connect"}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleSyncAction(broker)}
+                          disabled={brokerState.mode === "syncing"}
+                          className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {getSyncButtonLabel(broker)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => connectBroker(broker.name)}
+                          className="rounded-xl border border-brand-line bg-white px-3 py-2 text-xs font-semibold text-brand-muted transition hover:bg-slate-50"
+                        >
+                          Reconnect
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </article>
             );
