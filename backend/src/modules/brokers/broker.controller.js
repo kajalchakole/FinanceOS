@@ -4,6 +4,8 @@ import BrokerSyncState from "./brokerSyncState.model.js";
 import { isBreezeConnected } from "./breeze/breeze.service.js";
 import { brokerSyncFailedError } from "./broker.errors.js";
 import { brokerRegistry, getBrokerDisplayName } from "./broker.registry.js";
+import { importGrowwHoldings } from "./groww_import/growwImport.service.js";
+import { importINDMoneyHoldings } from "./indmoney_import/indmoneyImport.service.js";
 
 const supportedBrokers = Object.keys(brokerRegistry);
 
@@ -24,21 +26,25 @@ export const getBrokers = async (req, res, next) => {
       breezeAuth,
       hdfcAuth,
       growwSyncState,
+      indmoneySyncState,
       kiteHoldingsCount,
       breezeHoldingsCount,
       hdfcHoldingsCount,
       manualHoldingsCount,
-      growwHoldingsCount
+      growwHoldingsCount,
+      indmoneyHoldingsCount
     ] = await Promise.all([
       BrokerAuth.findOne({ broker: "kite" }),
       BrokerAuth.findOne({ broker: "breeze" }),
       BrokerAuth.findOne({ broker: "hdfc_investright" }),
       BrokerSyncState.findOne({ broker: "groww" }),
+      BrokerSyncState.findOne({ broker: "indmoney" }),
       Holding.countDocuments({ broker: { $in: ["kite", "Zerodha"] } }),
       Holding.countDocuments({ broker: "breeze" }),
       Holding.countDocuments({ broker: "hdfc_investright" }),
       Holding.countDocuments({ broker: "manual" }),
-      Holding.countDocuments({ broker: "groww" })
+      Holding.countDocuments({ broker: "groww" }),
+      Holding.countDocuments({ broker: "indmoney" })
     ]);
 
     const brokers = supportedBrokers.map((brokerName) => {
@@ -82,6 +88,16 @@ export const getBrokers = async (req, res, next) => {
         };
       }
 
+      if (brokerName === "indmoney") {
+        return {
+          name: "indmoney",
+          displayName: getBrokerDisplayName("indmoney"),
+          connected: true,
+          lastSyncAt: indmoneySyncState?.lastSyncAt || null,
+          holdingsCount: indmoneyHoldingsCount
+        };
+      }
+
       return {
         name: "manual",
         displayName: getBrokerDisplayName("manual"),
@@ -93,6 +109,38 @@ export const getBrokers = async (req, res, next) => {
 
     res.status(200).json(brokers);
   } catch (error) {
+    next(error);
+  }
+};
+
+export const importBrokerHoldings = async (req, res, next) => {
+  const brokerName = String(req.params.broker || "").toLowerCase();
+
+  try {
+    if (brokerName === "groww") {
+      const result = await importGrowwHoldings(req.files || []);
+      res.status(200).json(result);
+      return;
+    }
+
+    if (brokerName === "indmoney") {
+      const result = await importINDMoneyHoldings(req.files || []);
+      res.status(200).json(result);
+      return;
+    }
+
+    next(brokerSyncFailedError(brokerName, `Unsupported broker import: ${brokerName}`, 404));
+  } catch (error) {
+    if (error?.status === 400) {
+      res.status(400).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+        ...error.details
+      });
+      return;
+    }
+
     next(error);
   }
 };

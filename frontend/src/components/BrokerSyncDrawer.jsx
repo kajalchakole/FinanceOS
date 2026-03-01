@@ -96,7 +96,7 @@ function BrokerSyncDrawer({
     }
   };
 
-  const handleGrowwImport = async (files, broker) => {
+  const handleFileImport = async (files, broker) => {
     const selectedFiles = Array.from(files || []);
 
     if (selectedFiles.length === 0) {
@@ -112,14 +112,17 @@ function BrokerSyncDrawer({
         formData.append("files", file);
       });
 
-      const response = await api.post("/brokers/groww/import", formData, {
+      const response = await api.post(`/brokers/${broker.name}/import`, formData, {
         headers: {
           "Content-Type": "multipart/form-data"
         }
       });
 
       setUiState(broker.name, { mode: "idle", message: "" });
-      await onSyncSuccess(`Groww holdings imported (${response.data?.importedCount || 0} holdings)`);
+      const successMessage = broker.name === "indmoney"
+        ? "INDMoney holdings imported"
+        : `${broker.displayName || broker.name} holdings imported (${response.data?.importedCount || 0} holdings)`;
+      await onSyncSuccess(successMessage);
       await onRefreshBrokers();
       onClose();
     } catch (requestError) {
@@ -192,7 +195,7 @@ function BrokerSyncDrawer({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {broker.name === "groww" ? (
+                    {broker.name === "groww" || broker.name === "indmoney" ? (
                       <>
                         <input
                           ref={(node) => {
@@ -203,7 +206,7 @@ function BrokerSyncDrawer({
                           multiple
                           className="hidden"
                           onChange={(event) => {
-                            handleGrowwImport(event.target.files, broker);
+                            handleFileImport(event.target.files, broker);
                             event.target.value = "";
                           }}
                         />
@@ -213,7 +216,7 @@ function BrokerSyncDrawer({
                           onClick={() => fileInputRefs.current[broker.name]?.click()}
                           className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {brokerState.mode === "syncing" ? "Importing..." : "Import Files"}
+                          {brokerState.mode === "syncing" ? "Importing..." : "Import File"}
                         </button>
                       </>
                     ) : shouldShowConnectOnly ? (

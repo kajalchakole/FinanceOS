@@ -17,6 +17,7 @@ const unsupportedCallback = (broker) => {
 
 const manualSyncNoop = async () => 0;
 const growwSyncNoop = async () => 0;
+const indmoneySyncNoop = async () => 0;
 
 export const getBrokerDisplayName = (brokerName) => {
   const normalized = String(brokerName || "").trim().toLowerCase();
@@ -59,5 +60,11 @@ export const brokerRegistry = {
     syncHoldings: growwSyncNoop,
     getConnectUrl: () => unsupportedConnect("groww"),
     handleCallback: async () => unsupportedCallback("groww")
+  },
+  indmoney: {
+    displayName: "INDMoney",
+    syncHoldings: indmoneySyncNoop,
+    getConnectUrl: () => unsupportedConnect("indmoney"),
+    handleCallback: async () => unsupportedCallback("indmoney")
   }
 };
