@@ -17,8 +17,14 @@ const unsupportedCallback = (broker) => {
 
 const manualSyncNoop = async () => 0;
 
+export const getBrokerDisplayName = (brokerName) => {
+  const normalized = String(brokerName || "").trim().toLowerCase();
+  return brokerRegistry[normalized]?.displayName || normalized || "Unknown";
+};
+
 export const brokerRegistry = {
   kite: {
+    displayName: "Zerodha",
     syncHoldings: syncKiteHoldings,
     getConnectUrl: () => getKiteConnectUrl(),
     handleCallback: async (req) => {
@@ -26,6 +32,7 @@ export const brokerRegistry = {
     }
   },
   breeze: {
+    displayName: "ICICI Demat",
     syncHoldings: syncBreezeHoldings,
     getConnectUrl: () => unsupportedConnect("breeze"),
     handleCallback: async (req) => {
@@ -33,6 +40,7 @@ export const brokerRegistry = {
     }
   },
   hdfc_investright: {
+    displayName: "HDFC",
     syncHoldings: syncHdfcHoldings,
     getConnectUrl: () => getHdfcConnectUrl(),
     handleCallback: async (req) => {
@@ -40,6 +48,7 @@ export const brokerRegistry = {
     }
   },
   manual: {
+    displayName: "Manual",
     syncHoldings: manualSyncNoop,
     getConnectUrl: () => unsupportedConnect("manual"),
     handleCallback: async () => unsupportedCallback("manual")

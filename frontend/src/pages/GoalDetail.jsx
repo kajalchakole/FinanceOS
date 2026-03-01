@@ -171,7 +171,7 @@ function GoalDetailPage() {
                       return (
                         <tr key={holding._id}>
                           <td className="px-5 py-3 text-brand-text">{holding.instrumentName}</td>
-                          <td className="px-5 py-3 text-brand-muted">{holding.broker}</td>
+                          <td className="px-5 py-3 text-brand-muted">{holding.brokerDisplayName || holding.broker}</td>
                           <td className="px-5 py-3 text-brand-muted">{holding.quantity}</td>
                           <td className="px-5 py-3 text-brand-muted">{formatCurrency(holding.currentPrice)}</td>
                           <td className="px-5 py-3 font-semibold text-brand-text">{formatCurrency(currentValue)}</td>

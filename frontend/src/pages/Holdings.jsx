@@ -21,6 +21,7 @@ function HoldingsPage() {
     key: "instrumentName",
     direction: "asc"
   });
+  const [brokerFilter, setBrokerFilter] = useState("all");
   const selectAllRef = useRef(null);
 
   const fetchPageData = async () => {
@@ -68,15 +69,33 @@ function HoldingsPage() {
     };
   }, []);
 
+  const brokerOptions = useMemo(() => (
+    [...new Set(holdings.map((holding) => String(holding.broker || "").trim()).filter(Boolean))].sort((a, b) => (
+      String(holdings.find((holding) => holding.broker === a)?.brokerDisplayName || a).localeCompare(
+        String(holdings.find((holding) => holding.broker === b)?.brokerDisplayName || b),
+        undefined,
+        { sensitivity: "base" }
+      )
+    ))
+  ), [holdings]);
+
+  const filteredHoldings = useMemo(() => {
+    if (brokerFilter === "all") {
+      return holdings;
+    }
+
+    return holdings.filter((holding) => String(holding.broker || "").trim().toLowerCase() === brokerFilter.toLowerCase());
+  }, [brokerFilter, holdings]);
+
   useEffect(() => {
-    const selectableHoldingIds = holdings.map((holding) => holding._id);
+    const selectableHoldingIds = filteredHoldings.map((holding) => holding._id);
     const allSelected = selectableHoldingIds.length > 0 && selectableHoldingIds.every((holdingId) => selectedHoldingIds.includes(holdingId));
     const hasSelection = selectedHoldingIds.length > 0;
 
     if (selectAllRef.current) {
       selectAllRef.current.indeterminate = hasSelection && !allSelected;
     }
-  }, [holdings, selectedHoldingIds]);
+  }, [filteredHoldings, selectedHoldingIds]);
 
   const refreshDashboard = () => {
     window.dispatchEvent(new CustomEvent("dashboard:refresh"));
@@ -133,7 +152,7 @@ function HoldingsPage() {
   };
 
   const handleSelectAll = () => {
-    const selectableHoldingIds = holdings.map((holding) => holding._id);
+    const selectableHoldingIds = filteredHoldings.map((holding) => holding._id);
     const allSelected = selectableHoldingIds.length > 0 && selectableHoldingIds.every((holdingId) => selectedHoldingIds.includes(holdingId));
 
     setBulkActionError("");
@@ -208,7 +227,7 @@ function HoldingsPage() {
   })}`;
 
   const sortedHoldings = useMemo(() => {
-    const sorted = [...holdings];
+    const sorted = [...filteredHoldings];
 
     sorted.sort((left, right) => {
       const leftCurrentValue = Number(left.quantity || 0) * Number(left.currentPrice || 0);
@@ -222,7 +241,8 @@ function HoldingsPage() {
 
       const leftValueByKey = {
         instrumentName: left.instrumentName || "",
-        broker: left.broker || "",
+        instrumentType: left.instrumentType || "",
+        broker: left.brokerDisplayName || left.broker || "",
         quantity: Number(left.quantity || 0),
         averagePrice: Number(left.averagePrice || 0),
         currentPrice: Number(left.currentPrice || 0),
@@ -235,7 +255,8 @@ function HoldingsPage() {
 
       const rightValueByKey = {
         instrumentName: right.instrumentName || "",
-        broker: right.broker || "",
+        instrumentType: right.instrumentType || "",
+        broker: right.brokerDisplayName || right.broker || "",
         quantity: Number(right.quantity || 0),
         averagePrice: Number(right.averagePrice || 0),
         currentPrice: Number(right.currentPrice || 0),
@@ -254,7 +275,7 @@ function HoldingsPage() {
     });
 
     return sortConfig.direction === "asc" ? sorted : sorted.reverse();
-  }, [holdings, sortConfig.direction, sortConfig.key]);
+  }, [filteredHoldings, sortConfig.direction, sortConfig.key]);
 
   const handleSort = (key) => {
     setSortConfig((current) => {
@@ -284,12 +305,28 @@ function HoldingsPage() {
           <p className="mt-1 text-sm text-brand-muted">Track your instruments and goal-linked allocations.</p>
         </div>
 
-        <Link
-          to="/holdings/new"
-          className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          Add Holding
-        </Link>
+        <div className="flex items-center gap-3">
+          <select
+            value={brokerFilter}
+            onChange={(event) => setBrokerFilter(event.target.value)}
+            className="rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text focus:border-slate-400 focus:outline-none"
+            aria-label="Filter holdings by broker"
+          >
+            <option value="all">All Brokers</option>
+            {brokerOptions.map((brokerName) => (
+              <option key={brokerName} value={brokerName}>
+                {holdings.find((holding) => holding.broker === brokerName)?.brokerDisplayName || brokerName}
+              </option>
+            ))}
+          </select>
+
+          <Link
+            to="/holdings/new"
+            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Add Holding
+          </Link>
+        </div>
       </div>
 
       {selectedCount > 0 ? (
@@ -348,13 +385,13 @@ function HoldingsPage() {
 
       {isLoading ? <p className="text-sm text-brand-muted">Loading holdings...</p> : null}
       {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
-      {!isLoading && !error && holdings.length === 0 ? (
+      {!isLoading && !error && filteredHoldings.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel p-10 text-center text-sm text-brand-muted">
-          No holdings added yet
+          No holdings found for selected broker
         </div>
       ) : null}
 
-      {!isLoading && !error && holdings.length > 0 ? (
+      {!isLoading && !error && filteredHoldings.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-brand-line text-left text-sm">
@@ -364,7 +401,7 @@ function HoldingsPage() {
                     <input
                       ref={selectAllRef}
                       type="checkbox"
-                      checked={holdings.length > 0 && holdings.every((holding) => selectedHoldingIds.includes(holding._id))}
+                      checked={filteredHoldings.length > 0 && filteredHoldings.every((holding) => selectedHoldingIds.includes(holding._id))}
                       onChange={handleSelectAll}
                       disabled={isBulkAssigning}
                       aria-label="Select all holdings"
@@ -375,6 +412,9 @@ function HoldingsPage() {
                   </th>
                   <th className="px-5 py-3 font-semibold text-brand-text">
                     <button type="button" onClick={() => handleSort("broker")} className="font-semibold">Broker{getSortIndicator("broker")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("instrumentType")} className="font-semibold">Type{getSortIndicator("instrumentType")}</button>
                   </th>
                   <th className="px-5 py-3 font-semibold text-brand-text">
                     <button type="button" onClick={() => handleSort("quantity")} className="font-semibold">Quantity{getSortIndicator("quantity")}</button>
@@ -424,7 +464,8 @@ function HoldingsPage() {
                         />
                       </td>
                       <td className="px-5 py-3 text-brand-text">{holding.instrumentName}</td>
-                      <td className="px-5 py-3 text-brand-muted">{holding.broker}</td>
+                      <td className="px-5 py-3 text-brand-muted">{holding.brokerDisplayName || holding.broker}</td>
+                      <td className="px-5 py-3 text-brand-muted">{holding.instrumentType}</td>
                       <td className="px-5 py-3 text-brand-muted">{holding.quantity}</td>
                       <td className="px-5 py-3 text-brand-muted">{formatCurrency(holding.averagePrice)}</td>
                       <td className="px-5 py-3 text-brand-muted">{formatCurrency(holding.currentPrice)}</td>

@@ -1,5 +1,6 @@
 import Holding from "./holding.model.js";
 import mongoose from "mongoose";
+import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 
 const notFoundError = (message) => {
   const error = new Error(message);
@@ -29,6 +30,7 @@ const enrichHoldingMetrics = (holding) => {
 
   return {
     ...holding,
+    brokerDisplayName: getBrokerDisplayName(holding?.broker),
     investedValue,
     currentValue,
     profit,

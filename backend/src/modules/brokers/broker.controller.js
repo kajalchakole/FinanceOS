@@ -2,9 +2,9 @@ import Holding from "../holdings/holding.model.js";
 import BrokerAuth from "./brokerAuth.model.js";
 import { isBreezeConnected } from "./breeze/breeze.service.js";
 import { brokerSyncFailedError } from "./broker.errors.js";
-import { brokerRegistry } from "./broker.registry.js";
+import { brokerRegistry, getBrokerDisplayName } from "./broker.registry.js";
 
-const supportedBrokers = ["kite", "breeze", "hdfc_investright", "manual"];
+const supportedBrokers = Object.keys(brokerRegistry);
 
 const getBrokerService = (brokerName) => brokerRegistry[brokerName] || null;
 
@@ -32,6 +32,7 @@ export const getBrokers = async (req, res, next) => {
       if (brokerName === "kite") {
         return {
           name: "kite",
+          displayName: getBrokerDisplayName("kite"),
           connected: Boolean(kiteAuth),
           lastSyncAt: kiteAuth?.lastSyncAt || null,
           holdingsCount: kiteHoldingsCount
@@ -41,6 +42,7 @@ export const getBrokers = async (req, res, next) => {
       if (brokerName === "breeze") {
         return {
           name: "breeze",
+          displayName: getBrokerDisplayName("breeze"),
           connected: isBreezeConnected(breezeAuth),
           lastSyncAt: breezeAuth?.lastSyncAt || null,
           holdingsCount: breezeHoldingsCount
@@ -50,6 +52,7 @@ export const getBrokers = async (req, res, next) => {
       if (brokerName === "hdfc_investright") {
         return {
           name: "hdfc_investright",
+          displayName: getBrokerDisplayName("hdfc_investright"),
           connected: Boolean(hdfcAuth?.accessToken),
           lastSyncAt: hdfcAuth?.lastSyncAt || null,
           holdingsCount: hdfcHoldingsCount
@@ -58,6 +61,7 @@ export const getBrokers = async (req, res, next) => {
 
       return {
         name: "manual",
+        displayName: getBrokerDisplayName("manual"),
         connected: true,
         lastSyncAt: null,
         holdingsCount: manualHoldingsCount
@@ -120,7 +124,8 @@ export const handleBrokerCallback = async (req, res, next) => {
   try {
     await brokerService.handleCallback(req);
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const redirectUrl = `${frontendUrl}/dashboard?reconnected=${encodeURIComponent(brokerName)}`;
+    const reconnectedDisplay = getBrokerDisplayName(brokerName);
+    const redirectUrl = `${frontendUrl}/dashboard?reconnected=${encodeURIComponent(brokerName)}&reconnectedDisplay=${encodeURIComponent(reconnectedDisplay)}`;
     res.redirect(redirectUrl);
   } catch (error) {
     next(wrapUnknownBrokerError(brokerName, error));

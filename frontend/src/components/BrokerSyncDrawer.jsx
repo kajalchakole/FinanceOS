@@ -63,7 +63,7 @@ function BrokerSyncDrawer({
     try {
       await api.post(`/brokers/${broker.name}/sync`);
       setUiState(broker.name, { mode: "idle", message: "" });
-      await onSyncSuccess(`${broker.name} sync completed`);
+      await onSyncSuccess(`${broker.displayName || broker.name} sync completed`);
       await onRefreshBrokers();
       onClose();
     } catch (requestError) {
@@ -139,7 +139,7 @@ function BrokerSyncDrawer({
               <article key={broker.name} className="rounded-2xl border border-brand-line bg-white p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-brand-text">{broker.name}</p>
+                    <p className="text-sm font-semibold text-brand-text">{broker.displayName || broker.name}</p>
                     <p className="mt-1 text-xs text-brand-muted">
                       Status: {broker.connected ? "Connected" : "Not Connected"}
                     </p>

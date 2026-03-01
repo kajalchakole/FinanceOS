@@ -143,7 +143,7 @@ function PortfolioPage() {
                   <tbody className="divide-y divide-brand-line">
                     {sortedInstrumentRows.map((row) => (
                       <tr key={row.name}>
-                        <td className="px-5 py-3 text-brand-text">{row.name}</td>
+                        <td className="px-5 py-3 text-brand-text">{row.displayName || row.name}</td>
                         <td className="px-5 py-3 text-brand-muted">{formatCurrency(row.value)}</td>
                         <td className="px-5 py-3 text-brand-muted">{formatPercent(row.percentOfNetWorth)}</td>
                       </tr>
@@ -169,7 +169,7 @@ function PortfolioPage() {
                   <tbody className="divide-y divide-brand-line">
                     {sortedBrokerRows.map((row) => (
                       <tr key={row.name}>
-                        <td className="px-5 py-3 text-brand-text">{row.name}</td>
+                        <td className="px-5 py-3 text-brand-text">{row.displayName || row.name}</td>
                         <td className="px-5 py-3 text-brand-muted">{formatCurrency(row.value)}</td>
                         <td className="px-5 py-3 text-brand-muted">{formatPercent(row.percentOfNetWorth)}</td>
                       </tr>
@@ -208,7 +208,7 @@ function PortfolioPage() {
                     return (
                       <tr key={holding._id}>
                         <td className="px-5 py-3 text-brand-text">{holding.instrumentName}</td>
-                        <td className="px-5 py-3 text-brand-muted">{holding.broker}</td>
+                        <td className="px-5 py-3 text-brand-muted">{holding.brokerDisplayName || holding.broker}</td>
                         <td className="px-5 py-3 text-brand-muted">{holding.instrumentType}</td>
                         <td className="px-5 py-3 text-brand-muted">{holding.quantity}</td>
                         <td className="px-5 py-3 text-brand-muted">{formatCurrency(holding.averagePrice)}</td>

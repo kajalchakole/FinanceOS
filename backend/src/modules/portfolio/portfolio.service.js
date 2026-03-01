@@ -1,4 +1,5 @@
 import Holding from "../holdings/holding.model.js";
+import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 
 const getHoldingValue = (holding) => Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
 const getInvestedValue = (holding) => Number(holding.quantity || 0) * Number(holding.averagePrice || 0);
@@ -49,7 +50,10 @@ export const getPortfolioSummary = async () => {
     holdingsWithValue,
     (holding) => holding.broker,
     netWorth
-  );
+  ).map((row) => ({
+    ...row,
+    displayName: getBrokerDisplayName(row.name)
+  }));
 
   const allocationByInstrumentType = buildGroupedAllocation(
     holdingsWithValue,
@@ -64,6 +68,7 @@ export const getPortfolioSummary = async () => {
       _id: holding._id,
       instrumentName: holding.instrumentName,
       broker: holding.broker,
+      brokerDisplayName: getBrokerDisplayName(holding.broker),
       instrumentType: holding.instrumentType,
       quantity: holding.quantity,
       averagePrice: holding.averagePrice,

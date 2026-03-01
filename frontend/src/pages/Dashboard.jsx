@@ -70,14 +70,16 @@ function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const reconnectedBroker = params.get("reconnected");
+    const reconnectedDisplay = params.get("reconnectedDisplay");
 
     if (!reconnectedBroker) {
       return;
     }
 
-    setReconnectToast(`${reconnectedBroker} reconnected. Syncing portfolio...`);
+    setReconnectToast(`${reconnectedDisplay || reconnectedBroker} reconnected. Syncing portfolio...`);
     refreshPortfolio().catch(() => {});
     params.delete("reconnected");
+    params.delete("reconnectedDisplay");
     const nextSearch = params.toString();
     navigate(
       {
