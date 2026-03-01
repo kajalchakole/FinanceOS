@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 
 import api from "../services/api";
 
@@ -17,6 +17,7 @@ function BrokerSyncDrawer({
   onRefreshBrokers
 }) {
   const [brokerUiState, setBrokerUiState] = useState({});
+  const fileInputRefs = useRef({});
 
   const stateByBroker = useMemo(() => (
     brokers.reduce((accumulator, broker) => {
@@ -95,6 +96,46 @@ function BrokerSyncDrawer({
     }
   };
 
+  const handleGrowwImport = async (files, broker) => {
+    const selectedFiles = Array.from(files || []);
+
+    if (selectedFiles.length === 0) {
+      setUiState(broker.name, { mode: "failed", message: "Select at least one file to import." });
+      return;
+    }
+
+    setUiState(broker.name, { mode: "syncing", message: "" });
+
+    try {
+      const formData = new FormData();
+      selectedFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      const response = await api.post("/brokers/groww/import", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      setUiState(broker.name, { mode: "idle", message: "" });
+      await onSyncSuccess(`Groww holdings imported (${response.data?.importedCount || 0} holdings)`);
+      await onRefreshBrokers();
+      onClose();
+    } catch (requestError) {
+      const details = requestError.response?.data;
+      const fileErrors = (details?.byFile || [])
+        .filter((entry) => entry?.error)
+        .map((entry) => `${entry.filename}: ${entry.error}`);
+
+      const message = fileErrors.length > 0
+        ? fileErrors.join(" | ")
+        : details?.fileError || details?.message || "Import failed. Please check your files and try again.";
+
+      setUiState(broker.name, { mode: "failed", message });
+    }
+  };
+
   const getSyncButtonLabel = (broker) => {
     const brokerState = stateByBroker[broker.name] || { mode: "idle" };
 
@@ -151,7 +192,31 @@ function BrokerSyncDrawer({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {shouldShowConnectOnly ? (
+                    {broker.name === "groww" ? (
+                      <>
+                        <input
+                          ref={(node) => {
+                            fileInputRefs.current[broker.name] = node;
+                          }}
+                          type="file"
+                          accept=".csv,.xls,.xlsx"
+                          multiple
+                          className="hidden"
+                          onChange={(event) => {
+                            handleGrowwImport(event.target.files, broker);
+                            event.target.value = "";
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={brokerState.mode === "syncing"}
+                          onClick={() => fileInputRefs.current[broker.name]?.click()}
+                          className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {brokerState.mode === "syncing" ? "Importing..." : "Import Files"}
+                        </button>
+                      </>
+                    ) : shouldShowConnectOnly ? (
                       <button
                         type="button"
                         onClick={() => connectBroker(broker.name)}
