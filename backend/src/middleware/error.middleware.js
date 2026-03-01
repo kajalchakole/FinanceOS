@@ -58,5 +58,9 @@ export const errorHandler = (err, req, res, next) => {
     responsePayload.broker = err.broker;
   }
 
+  if (process.env.NODE_ENV !== "production" && err?.details) {
+    responsePayload.details = String(err.details);
+  }
+
   res.status(statusCode).json(responsePayload);
 };
