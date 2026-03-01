@@ -1,6 +1,7 @@
 import Holding from "./holding.model.js";
 import mongoose from "mongoose";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
+import { applyCommonMarketPrices } from "../market/marketPrice.service.js";
 
 const notFoundError = (message) => {
   const error = new Error(message);
@@ -18,6 +19,8 @@ const badRequestError = (message) => {
   error.statusCode = 400;
   return error;
 };
+
+const parseBoolean = (value) => ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
 
 const enrichHoldingMetrics = (holding) => {
   const quantity = Number(holding?.quantity || 0);
@@ -50,10 +53,17 @@ export const createHolding = async (req, res, next) => {
 
 export const getHoldings = async (req, res, next) => {
   try {
+    const livePrices = parseBoolean(req.query.livePrices);
     const holdings = await Holding.find()
       .sort({ createdAt: -1 })
-      .populate(holdingPopulate);
-    res.status(200).json(holdings.map((holding) => enrichHoldingMetrics(holding.toObject())));
+      .populate(holdingPopulate)
+      .lean();
+
+    const holdingsWithLivePrices = livePrices
+      ? await applyCommonMarketPrices(holdings)
+      : holdings;
+
+    res.status(200).json(holdingsWithLivePrices.map((holding) => enrichHoldingMetrics(holding)));
   } catch (error) {
     next(error);
   }

@@ -4,6 +4,12 @@ import { Link } from "react-router-dom";
 import ConfirmationModal from "../components/ConfirmationModal";
 import api from "../services/api";
 
+const DEFAULT_REFRESH_INTERVAL_MS = 1000;
+const resolveRefreshIntervalMs = () => {
+  const parsed = Number(import.meta.env.VITE_HOLDINGS_REFRESH_MS || DEFAULT_REFRESH_INTERVAL_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_REFRESH_INTERVAL_MS;
+};
+
 function HoldingsPage() {
   const [holdings, setHoldings] = useState([]);
   const [goals, setGoals] = useState([]);
@@ -26,7 +32,7 @@ function HoldingsPage() {
 
   const fetchPageData = async () => {
     const [holdingsResponse, goalsResponse] = await Promise.all([
-      api.get("/holdings"),
+      api.get("/holdings", { params: { livePrices: "true" } }),
       api.get("/goals")
     ]);
 
@@ -46,6 +52,22 @@ function HoldingsPage() {
     };
 
     loadPage();
+  }, []);
+
+  useEffect(() => {
+    const refreshIntervalMs = resolveRefreshIntervalMs();
+    const intervalId = window.setInterval(async () => {
+      try {
+        const holdingsResponse = await api.get("/holdings", { params: { livePrices: "true" } });
+        setHoldings(holdingsResponse.data || []);
+      } catch (requestError) {
+        // Keep existing data on intermittent quote-source failures.
+      }
+    }, refreshIntervalMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   useEffect(() => {

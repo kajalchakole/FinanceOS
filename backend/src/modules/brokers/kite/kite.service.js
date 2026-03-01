@@ -2,6 +2,7 @@ import axios from "axios";
 import crypto from "crypto";
 
 import Holding from "../../holdings/holding.model.js";
+import { applyCommonMarketPrices } from "../../market/marketPrice.service.js";
 import BrokerAuth from "../brokerAuth.model.js";
 import {
   brokerNotConnectedError,
@@ -196,19 +197,20 @@ export const syncKiteHoldings = async () => {
     return normalized;
   });
   const allNormalizedHoldings = [...normalizedHoldings, ...normalizedMfHoldings];
-  const syncedSymbols = allNormalizedHoldings.map((holding) => holding.instrumentName);
+  const pricedHoldings = await applyCommonMarketPrices(allNormalizedHoldings);
+  const syncedSymbols = pricedHoldings.map((holding) => holding.instrumentName);
 
   console.info("[Kite Sync] Holdings fetched from Kite", {
     equityCount: normalizedHoldings.length,
     mutualFundCount: normalizedMfHoldings.length,
-    count: allNormalizedHoldings.length,
+    count: pricedHoldings.length,
     symbols: syncedSymbols
   });
 
   await Holding.deleteMany({ broker: { $in: ["kite", "Zerodha"] } });
 
-  if (allNormalizedHoldings.length > 0) {
-    await Holding.insertMany(allNormalizedHoldings);
+  if (pricedHoldings.length > 0) {
+    await Holding.insertMany(pricedHoldings);
   }
 
   await BrokerAuth.updateOne(
@@ -217,8 +219,8 @@ export const syncKiteHoldings = async () => {
   );
 
   console.info("[Kite Sync] Holdings sync completed", {
-    insertedCount: allNormalizedHoldings.length
+    insertedCount: pricedHoldings.length
   });
 
-  return allNormalizedHoldings.length;
+  return pricedHoldings.length;
 };

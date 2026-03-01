@@ -1,5 +1,6 @@
 import Holding from "../holdings/holding.model.js";
 import BrokerAuth from "./brokerAuth.model.js";
+import BrokerSyncState from "./brokerSyncState.model.js";
 import { isBreezeConnected } from "./breeze/breeze.service.js";
 import { brokerSyncFailedError } from "./broker.errors.js";
 import { brokerRegistry, getBrokerDisplayName } from "./broker.registry.js";
@@ -18,14 +19,26 @@ const wrapUnknownBrokerError = (brokerName, error) => {
 
 export const getBrokers = async (req, res, next) => {
   try {
-    const [kiteAuth, breezeAuth, hdfcAuth, kiteHoldingsCount, breezeHoldingsCount, hdfcHoldingsCount, manualHoldingsCount] = await Promise.all([
+    const [
+      kiteAuth,
+      breezeAuth,
+      hdfcAuth,
+      growwSyncState,
+      kiteHoldingsCount,
+      breezeHoldingsCount,
+      hdfcHoldingsCount,
+      manualHoldingsCount,
+      growwHoldingsCount
+    ] = await Promise.all([
       BrokerAuth.findOne({ broker: "kite" }),
       BrokerAuth.findOne({ broker: "breeze" }),
       BrokerAuth.findOne({ broker: "hdfc_investright" }),
+      BrokerSyncState.findOne({ broker: "groww" }),
       Holding.countDocuments({ broker: { $in: ["kite", "Zerodha"] } }),
       Holding.countDocuments({ broker: "breeze" }),
       Holding.countDocuments({ broker: "hdfc_investright" }),
-      Holding.countDocuments({ broker: "manual" })
+      Holding.countDocuments({ broker: "manual" }),
+      Holding.countDocuments({ broker: "groww" })
     ]);
 
     const brokers = supportedBrokers.map((brokerName) => {
@@ -56,6 +69,16 @@ export const getBrokers = async (req, res, next) => {
           connected: Boolean(hdfcAuth?.accessToken),
           lastSyncAt: hdfcAuth?.lastSyncAt || null,
           holdingsCount: hdfcHoldingsCount
+        };
+      }
+
+      if (brokerName === "groww") {
+        return {
+          name: "groww",
+          displayName: getBrokerDisplayName("groww"),
+          connected: true,
+          lastSyncAt: growwSyncState?.lastSyncAt || null,
+          holdingsCount: growwHoldingsCount
         };
       }
 

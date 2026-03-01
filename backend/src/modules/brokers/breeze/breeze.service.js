@@ -1,6 +1,7 @@
 import { createRequire } from "module";
 
 import Holding from "../../holdings/holding.model.js";
+import { applyCommonMarketPrices } from "../../market/marketPrice.service.js";
 import BrokerAuth from "../brokerAuth.model.js";
 import {
   brokerNotConnectedError,
@@ -320,77 +321,6 @@ const deriveStockCode = (item, instrumentName) => {
 const getHoldingKey = (instrumentName, instrumentType) => (
   `${String(instrumentName || "").trim().toLowerCase()}::${String(instrumentType || "").trim().toLowerCase()}`
 );
-
-const extractQuotePrice = (quoteResponse) => {
-  const rows = getHoldingItems(quoteResponse);
-  const row = rows[0] || quoteResponse?.Success || quoteResponse?.success || quoteResponse?.data || {};
-
-  return pickFirstNumericValue(row, [
-    "ltp",
-    "last_price",
-    "last_traded_price",
-    "close",
-    "current_price",
-    "market_price",
-    "price"
-  ]);
-};
-
-const getNameRows = (nameResponse) => {
-  if (!nameResponse || nameResponse instanceof Map) {
-    return [];
-  }
-
-  if (Array.isArray(nameResponse)) {
-    return nameResponse;
-  }
-
-  if (Array.isArray(nameResponse.Success)) {
-    return nameResponse.Success;
-  }
-
-  if (Array.isArray(nameResponse.success)) {
-    return nameResponse.success;
-  }
-
-  if (Array.isArray(nameResponse.data)) {
-    return nameResponse.data;
-  }
-
-  return [nameResponse];
-};
-
-const extractNameMapping = (nameResponse) => {
-  const rows = getNameRows(nameResponse);
-
-  for (const row of rows) {
-    const isecStockCode = String(
-      row?.isec_stock_code
-        || row?.isecStockCode
-        || row?.stock_code
-        || row?.stockCode
-        || ""
-    ).trim();
-
-    const exchangeStockCode = String(
-      row?.exchange_stock_code
-        || row?.exchangeStockCode
-        || row?.symbol
-        || ""
-    ).trim();
-
-    if (!isecStockCode && !exchangeStockCode) {
-      continue;
-    }
-
-    return {
-      isecStockCode: isecStockCode || null,
-      exchangeStockCode: exchangeStockCode || null
-    };
-  }
-
-  return null;
-};
 
 const averagePriceDebugKeys = [
   "averagePrice",
@@ -852,95 +782,23 @@ export const syncBreezeHoldings = async () => {
       });
     }
 
-    for (const holding of normalizedHoldings) {
+    const nonCashHoldings = normalizedHoldings.filter((holding) => holding.instrumentType !== "Cash");
+    const pricedNonCashHoldings = await applyCommonMarketPrices(nonCashHoldings);
+    const pricedByHoldingKey = pricedNonCashHoldings.reduce((accumulator, holding) => {
+      accumulator.set(getHoldingKey(holding.instrumentName, holding.instrumentType), holding.currentPrice);
+      return accumulator;
+    }, new Map());
+
+    normalizedHoldings.forEach((holding) => {
       if (holding.instrumentType === "Cash") {
-        continue;
+        return;
       }
 
-      const stockCode = holding.sourceStockCode;
-
-      if (!stockCode) {
-        continue;
+      const resolvedPrice = toNumber(pricedByHoldingKey.get(getHoldingKey(holding.instrumentName, holding.instrumentType)));
+      if (resolvedPrice > 0) {
+        holding.currentPrice = resolvedPrice;
       }
-
-      let quotePrice = 0;
-      const exchangeCandidates = ["NSE", "BSE", "NFO", "BFO"];
-
-      for (const exchangeCode of exchangeCandidates) {
-        try {
-          const quote = await breeze.getQuotes({
-            stockCode,
-            exchangeCode,
-            stock_code: stockCode,
-            exchange_code: exchangeCode
-          });
-          quotePrice = extractQuotePrice(quote);
-
-          if (quotePrice > 0) {
-            break;
-          }
-        } catch (error) {
-          quotePrice = 0;
-        }
-
-        // If direct quote failed, resolve mapped exchange symbol and retry quote once.
-        try {
-          const names = await breeze.getNames({
-            exchange: exchangeCode.toLowerCase(),
-            stockCode,
-            exchange_code: exchangeCode,
-            stock_code: stockCode
-          });
-          const mapped = extractNameMapping(names);
-
-          if (!mapped) {
-            continue;
-          }
-
-          const retryCodes = [mapped.exchangeStockCode, mapped.isecStockCode].filter(Boolean);
-
-          for (const retryStockCode of retryCodes) {
-            const retryQuote = await breeze.getQuotes({
-              stockCode: retryStockCode,
-              exchangeCode,
-              stock_code: retryStockCode,
-              exchange_code: exchangeCode
-            });
-            quotePrice = extractQuotePrice(retryQuote);
-
-            if (quotePrice > 0) {
-              break;
-            }
-          }
-
-          if (quotePrice > 0) {
-            break;
-          }
-        } catch (error) {
-          quotePrice = 0;
-        }
-      }
-
-      if (quotePrice > 0) {
-        holding.currentPrice = quotePrice;
-        if (process.env.NODE_ENV !== "production") {
-          console.debug("[Breeze Sync] Quote resolved", {
-            instrumentName: holding.instrumentName,
-            stockCode,
-            quotePrice,
-            quantity: holding.quantity,
-            averagePrice: holding.averagePrice,
-            currentPrice: holding.currentPrice
-          });
-        }
-      } else if (process.env.NODE_ENV !== "production") {
-        console.debug("[Breeze Sync] Price unresolved", {
-          instrumentName: holding.instrumentName,
-          instrumentType: holding.instrumentType,
-          stockCode
-        });
-      }
-    }
+    });
 
     if (process.env.NODE_ENV !== "production") {
       const unresolvedAverage = normalizedHoldings.find(

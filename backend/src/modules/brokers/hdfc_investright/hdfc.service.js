@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import Holding from "../../holdings/holding.model.js";
+import { applyCommonMarketPrices } from "../../market/marketPrice.service.js";
 import BrokerAuth from "../brokerAuth.model.js";
 import {
   brokerNotConnectedError,
@@ -297,11 +298,12 @@ export const syncHdfcHoldings = async () => {
 
   const holdingsRows = getHdfcHoldingsRows(response?.data);
   const normalizedHoldings = holdingsRows.map(normalizeHolding);
+  const pricedHoldings = await applyCommonMarketPrices(normalizedHoldings);
 
   await Holding.deleteMany({ broker: HDFC_BROKER_NAME });
 
-  if (normalizedHoldings.length > 0) {
-    await Holding.insertMany(normalizedHoldings);
+  if (pricedHoldings.length > 0) {
+    await Holding.insertMany(pricedHoldings);
   }
 
   await BrokerAuth.updateOne(
@@ -309,5 +311,5 @@ export const syncHdfcHoldings = async () => {
     { $set: { lastSyncAt: new Date() } }
   );
 
-  return normalizedHoldings.length;
+  return pricedHoldings.length;
 };
