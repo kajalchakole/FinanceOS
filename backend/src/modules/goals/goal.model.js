@@ -50,6 +50,10 @@ const goalSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  usePpf: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

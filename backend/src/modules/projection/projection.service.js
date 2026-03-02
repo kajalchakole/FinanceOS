@@ -4,11 +4,15 @@ import Holding from "../holdings/holding.model.js";
 import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import EpfAccount from "../epf/epf.model.js";
 import NpsAccount from "../nps/nps.model.js";
+import PpfAccount from "../ppf/ppf.model.js";
 import Goal from "../goals/goal.model.js";
 const activeEpfAccountFilter = {
   $or: [{ isActive: true }, { isActive: { $exists: false } }]
 };
 const activeNpsAccountFilter = {
+  $or: [{ isActive: true }, { isActive: { $exists: false } }]
+};
+const activePpfAccountFilter = {
   $or: [{ isActive: true }, { isActive: { $exists: false } }]
 };
 
@@ -70,15 +74,17 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
 
   const goals = await Goal.find(
     { _id: { $in: validGoalIds } },
-    { useEpf: 1, useNps: 1 }
+    { useEpf: 1, useNps: 1, usePpf: 1 }
   ).lean();
 
-  const [epfAccounts, npsAccounts] = await Promise.all([
+  const [epfAccounts, npsAccounts, ppfAccounts] = await Promise.all([
     EpfAccount.find(activeEpfAccountFilter).lean(),
-    NpsAccount.find(activeNpsAccountFilter).lean()
+    NpsAccount.find(activeNpsAccountFilter).lean(),
+    PpfAccount.find(activePpfAccountFilter).lean()
   ]);
   const totalEpfValue = epfAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0);
   const totalNpsValue = npsAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0);
+  const totalPpfValue = ppfAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0);
 
   const holdingCorpusRows = await Holding.aggregate([
     {
@@ -132,6 +138,7 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
 
     let epfValue = 0;
     let npsValue = 0;
+    let ppfValue = 0;
 
     if (goal.useEpf) {
       epfValue = totalEpfValue;
@@ -139,8 +146,11 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
     if (goal.useNps) {
       npsValue = totalNpsValue;
     }
+    if (goal.usePpf) {
+      ppfValue = totalPpfValue;
+    }
 
-    corpusByGoalId[goalId] = linkedHoldingsValue + epfValue + npsValue;
+    corpusByGoalId[goalId] = linkedHoldingsValue + epfValue + npsValue + ppfValue;
   });
 
   return corpusByGoalId;

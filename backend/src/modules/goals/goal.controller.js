@@ -3,6 +3,7 @@ import Holding from "../holdings/holding.model.js";
 import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import EpfAccount from "../epf/epf.model.js";
 import NpsAccount from "../nps/nps.model.js";
+import PpfAccount from "../ppf/ppf.model.js";
 import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 
 const notFoundError = (message) => {
@@ -23,6 +24,9 @@ const activeEpfAccountFilter = {
   $or: [{ isActive: true }, { isActive: { $exists: false } }]
 };
 const activeNpsAccountFilter = {
+  $or: [{ isActive: true }, { isActive: { $exists: false } }]
+};
+const activePpfAccountFilter = {
   $or: [{ isActive: true }, { isActive: { $exists: false } }]
 };
 
@@ -63,6 +67,13 @@ export const createGoal = async (req, res, next) => {
       await Goal.updateMany(
         { _id: { $ne: goal._id } },
         { $set: { useNps: false } }
+      );
+    }
+
+    if (isTruthyFlag(req.body?.usePpf)) {
+      await Goal.updateMany(
+        { _id: { $ne: goal._id } },
+        { $set: { usePpf: false } }
       );
     }
 
@@ -116,14 +127,15 @@ export const getGoalDetail = async (req, res, next) => {
     }
 
     const goalData = goal.toObject();
-    const [linkedHoldings, linkedFixedDeposits, epfAccounts, npsAccounts] = await Promise.all([
+    const [linkedHoldings, linkedFixedDeposits, epfAccounts, npsAccounts, ppfAccounts] = await Promise.all([
       Holding.find({ goalId: goal._id }).sort({ createdAt: -1 }),
       FixedDeposit.find({
         goalId: goal._id,
         status: { $in: ["active", "matured"] }
       }).sort({ maturityDate: 1 }),
       goal.useEpf ? EpfAccount.find(activeEpfAccountFilter) : Promise.resolve([]),
-      goal.useNps ? NpsAccount.find(activeNpsAccountFilter) : Promise.resolve([])
+      goal.useNps ? NpsAccount.find(activeNpsAccountFilter) : Promise.resolve([]),
+      goal.usePpf ? PpfAccount.find(activePpfAccountFilter) : Promise.resolve([])
     ]);
     const holdingsAllocated = linkedHoldings.reduce(
       (sum, holding) => sum + (Number(holding.quantity || 0) * Number(holding.currentPrice || 0)),
@@ -139,8 +151,11 @@ export const getGoalDetail = async (req, res, next) => {
     const npsContribution = goal.useNps
       ? npsAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0)
       : 0;
+    const ppfContribution = goal.usePpf
+      ? ppfAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0)
+      : 0;
     const totalAllocated = holdingsAllocated + fixedDepositsAllocated;
-    const projection = calculateProjection(goalData, totalAllocated + epfContribution + npsContribution);
+    const projection = calculateProjection(goalData, totalAllocated + epfContribution + npsContribution + ppfContribution);
 
     const futureRequired = Number(projection.futureRequired || 0);
     const allocationPercent = futureRequired > 0
@@ -155,7 +170,8 @@ export const getGoalDetail = async (req, res, next) => {
       totalAllocated,
       allocationPercent,
       epfContribution,
-      npsContribution
+      npsContribution,
+      ppfContribution
     });
   } catch (error) {
     next(error);
@@ -196,6 +212,13 @@ export const updateGoal = async (req, res, next) => {
       await Goal.updateMany(
         { _id: { $ne: goal._id } },
         { $set: { useNps: false } }
+      );
+    }
+
+    if (isTruthyFlag(req.body?.usePpf)) {
+      await Goal.updateMany(
+        { _id: { $ne: goal._id } },
+        { $set: { usePpf: false } }
       );
     }
 

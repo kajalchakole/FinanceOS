@@ -4,12 +4,14 @@ import api from "../services/api";
 
 function SettingsPage() {
   const [intervalDays, setIntervalDays] = useState("1");
-  const [epfIntervalHours, setEpfIntervalHours] = useState("168");
-  const [npsIntervalHours, setNpsIntervalHours] = useState("168");
+  const [epfIntervalDays, setEpfIntervalDays] = useState("30");
+  const [npsIntervalDays, setNpsIntervalDays] = useState("30");
+  const [ppfIntervalDays, setPpfIntervalDays] = useState("365");
   const [loading, setLoading] = useState(true);
   const [savingFd, setSavingFd] = useState(false);
   const [savingEpf, setSavingEpf] = useState(false);
   const [savingNps, setSavingNps] = useState(false);
+  const [savingPpf, setSavingPpf] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
@@ -24,12 +26,16 @@ function SettingsPage() {
           setIntervalDays(String(response.data.fdRecalculationIntervalDays));
         }
 
-        if (isMounted && Number.isFinite(response.data?.epfRefreshIntervalHours)) {
-          setEpfIntervalHours(String(response.data.epfRefreshIntervalHours));
+        if (isMounted && Number.isFinite(response.data?.epfRefreshIntervalDays)) {
+          setEpfIntervalDays(String(response.data.epfRefreshIntervalDays));
         }
 
-        if (isMounted && Number.isFinite(response.data?.npsRefreshIntervalHours)) {
-          setNpsIntervalHours(String(response.data.npsRefreshIntervalHours));
+        if (isMounted && Number.isFinite(response.data?.npsRefreshIntervalDays)) {
+          setNpsIntervalDays(String(response.data.npsRefreshIntervalDays));
+        }
+
+        if (isMounted && Number.isFinite(response.data?.ppfRefreshIntervalDays)) {
+          setPpfIntervalDays(String(response.data.ppfRefreshIntervalDays));
         }
       } finally {
         if (isMounted) {
@@ -68,10 +74,10 @@ function SettingsPage() {
   };
 
   const handleSaveEPF = async () => {
-    const parsedInterval = Number(epfIntervalHours);
+    const parsedInterval = Number(epfIntervalDays);
 
-    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 24 * 365) {
-      setError("EPF interval must be an integer between 1 and 8760.");
+    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 365) {
+      setError("EPF interval must be an integer between 1 and 365.");
       return;
     }
 
@@ -79,7 +85,7 @@ function SettingsPage() {
     setSavingEpf(true);
 
     try {
-      await api.patch("/settings/epf-interval", { intervalHours: parsedInterval });
+      await api.patch("/settings/epf-interval", { intervalDays: parsedInterval });
       setSuccess("EPF settings saved");
       setTimeout(() => setSuccess(""), 2000);
     } catch (requestError) {
@@ -90,10 +96,10 @@ function SettingsPage() {
   };
 
   const handleSaveNPS = async () => {
-    const parsedInterval = Number(npsIntervalHours);
+    const parsedInterval = Number(npsIntervalDays);
 
-    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 24 * 365) {
-      setError("NPS interval must be an integer between 1 and 8760.");
+    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 365) {
+      setError("NPS interval must be an integer between 1 and 365.");
       return;
     }
 
@@ -101,13 +107,35 @@ function SettingsPage() {
     setSavingNps(true);
 
     try {
-      await api.patch("/settings/nps-interval", { intervalHours: parsedInterval });
+      await api.patch("/settings/nps-interval", { intervalDays: parsedInterval });
       setSuccess("NPS settings saved");
       setTimeout(() => setSuccess(""), 2000);
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Unable to save NPS settings");
     } finally {
       setSavingNps(false);
+    }
+  };
+
+  const handleSavePPF = async () => {
+    const parsedInterval = Number(ppfIntervalDays);
+
+    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 3650) {
+      setError("PPF interval must be an integer between 1 and 3650.");
+      return;
+    }
+
+    setError("");
+    setSavingPpf(true);
+
+    try {
+      await api.patch("/settings/ppf-interval", { intervalDays: parsedInterval });
+      setSuccess("PPF settings saved");
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to save PPF settings");
+    } finally {
+      setSavingPpf(false);
     }
   };
 
@@ -139,16 +167,16 @@ function SettingsPage() {
 
           <div className="border-t border-brand-line pt-6">
             <h3 className="text-lg font-semibold text-brand-text">EPF Refresh</h3>
-            <label className="mb-2 mt-4 block text-sm font-medium text-brand-text" htmlFor="epfRefreshInterval">Refresh Interval (Hours)</label>
+            <label className="mb-2 mt-4 block text-sm font-medium text-brand-text" htmlFor="epfRefreshInterval">Refresh Interval (Days)</label>
             <input
               id="epfRefreshInterval"
               className="w-full max-w-xs rounded-xl border border-brand-line bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-accent"
               type="number"
               min={1}
-              max={8760}
+              max={365}
               step={1}
-              value={epfIntervalHours}
-              onChange={(event) => setEpfIntervalHours(event.target.value)}
+              value={epfIntervalDays}
+              onChange={(event) => setEpfIntervalDays(event.target.value)}
             />
             <button type="button" className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" disabled={savingEpf} onClick={handleSaveEPF}>
               {savingEpf ? "Saving..." : "Save EPF"}
@@ -157,19 +185,37 @@ function SettingsPage() {
 
           <div className="border-t border-brand-line pt-6">
             <h3 className="text-lg font-semibold text-brand-text">NPS Refresh</h3>
-            <label className="mb-2 mt-4 block text-sm font-medium text-brand-text" htmlFor="npsRefreshInterval">Refresh Interval (Hours)</label>
+            <label className="mb-2 mt-4 block text-sm font-medium text-brand-text" htmlFor="npsRefreshInterval">Refresh Interval (Days)</label>
             <input
               id="npsRefreshInterval"
               className="w-full max-w-xs rounded-xl border border-brand-line bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-accent"
               type="number"
               min={1}
-              max={8760}
+              max={365}
               step={1}
-              value={npsIntervalHours}
-              onChange={(event) => setNpsIntervalHours(event.target.value)}
+              value={npsIntervalDays}
+              onChange={(event) => setNpsIntervalDays(event.target.value)}
             />
             <button type="button" className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" disabled={savingNps} onClick={handleSaveNPS}>
               {savingNps ? "Saving..." : "Save NPS"}
+            </button>
+          </div>
+
+          <div className="border-t border-brand-line pt-6">
+            <h3 className="text-lg font-semibold text-brand-text">PPF Refresh</h3>
+            <label className="mb-2 mt-4 block text-sm font-medium text-brand-text" htmlFor="ppfRefreshInterval">Refresh Interval (Days)</label>
+            <input
+              id="ppfRefreshInterval"
+              className="w-full max-w-xs rounded-xl border border-brand-line bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-accent"
+              type="number"
+              min={1}
+              max={3650}
+              step={1}
+              value={ppfIntervalDays}
+              onChange={(event) => setPpfIntervalDays(event.target.value)}
+            />
+            <button type="button" className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" disabled={savingPpf} onClick={handleSavePPF}>
+              {savingPpf ? "Saving..." : "Save PPF"}
             </button>
           </div>
 
