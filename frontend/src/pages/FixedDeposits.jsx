@@ -30,6 +30,7 @@ function FixedDepositsPage() {
   const [selectedFD, setSelectedFD] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [editData, setEditData] = useState({
     interestRate: "",
@@ -245,6 +246,36 @@ function FixedDepositsPage() {
       setError(requestError.response?.data?.message || "Unable to recalculate fixed deposits");
     } finally {
       setRecalculating(false);
+    }
+  };
+
+  const handleDeleteFD = async (fdId) => {
+    if (!fdId) {
+      return;
+    }
+
+    const shouldDelete = window.confirm("Delete this fixed deposit?");
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setSuccessMessage("");
+    setError("");
+    setDeletingId(fdId);
+
+    try {
+      await api.delete(`/fixed-deposits/${fdId}`);
+      await fetchFixedDeposits();
+      setSuccessMessage("Fixed deposit deleted successfully.");
+
+      if (selectedFD?._id === fdId) {
+        closeEditModal();
+      }
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to delete fixed deposit");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -467,6 +498,7 @@ function FixedDepositsPage() {
                     <td className="px-5 py-3 text-brand-muted capitalize">{deposit.compounding}</td>
                     <td className="px-5 py-3 text-brand-muted">{deposit.isAutoRenew ? "Yes" : "No"}</td>
                     <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleEditOpen(deposit)}
@@ -474,6 +506,15 @@ function FixedDepositsPage() {
                       >
                         Edit
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFD(deposit._id)}
+                        disabled={deletingId === deposit._id}
+                        className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingId === deposit._id ? "Deleting..." : "Delete"}
+                      </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
