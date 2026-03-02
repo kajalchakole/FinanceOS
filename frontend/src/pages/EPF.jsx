@@ -169,6 +169,7 @@ function EPFPage() {
       }
 
       await fetchAccounts();
+      window.dispatchEvent(new CustomEvent("dashboard:refresh"));
       closeModal();
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Unable to save EPF account");
@@ -185,6 +186,7 @@ function EPFPage() {
     try {
       await api.post(`/epf/${accountId}/recalculate`);
       await fetchAccounts();
+      window.dispatchEvent(new CustomEvent("dashboard:refresh"));
       setSuccess("EPF value recalculated");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Unable to recalculate EPF account");
