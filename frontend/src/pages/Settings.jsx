@@ -3,10 +3,11 @@ import React, { useEffect, useState } from "react";
 import api from "../services/api";
 
 function SettingsPage() {
-  const [intervalDays, setIntervalDays] = useState(1);
+  const [intervalDays, setIntervalDays] = useState("1");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -16,7 +17,7 @@ function SettingsPage() {
         const response = await api.get("/settings");
 
         if (isMounted && Number.isFinite(response.data?.fdRecalculationIntervalDays)) {
-          setIntervalDays(response.data.fdRecalculationIntervalDays);
+          setIntervalDays(String(response.data.fdRecalculationIntervalDays));
         }
       } finally {
         if (isMounted) {
@@ -33,16 +34,25 @@ function SettingsPage() {
   }, []);
 
   const handleSave = async () => {
-    if (intervalDays < 1 || intervalDays > 365) {
+    const parsedInterval = Number(intervalDays);
+
+    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 365) {
+      setError("Interval must be an integer between 1 and 365.");
+      setSuccess(false);
       return;
     }
 
+    setError("");
     setSaving(true);
 
     try {
-      await api.patch("/settings/fd-interval", { intervalDays });
+      await api.patch("/settings/fd-interval", { intervalDays: parsedInterval });
+      setIntervalDays(String(parsedInterval));
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to save settings");
+      setSuccess(false);
     } finally {
       setSaving(false);
     }
@@ -72,8 +82,13 @@ function SettingsPage() {
                 type="number"
                 min={1}
                 max={365}
+                step={1}
                 value={intervalDays}
-                onChange={(event) => setIntervalDays(Number(event.target.value))}
+                onChange={(event) => {
+                  setIntervalDays(event.target.value);
+                  setError("");
+                  setSuccess(false);
+                }}
               />
             </div>
 
@@ -84,12 +99,13 @@ function SettingsPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                className="rounded-xl bg-brand-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                 disabled={loading || saving}
                 onClick={handleSave}
               >
                 {saving ? "Saving..." : "Save"}
               </button>
+              {error ? <p className="text-sm text-rose-600">{error}</p> : null}
               {success ? <p className="text-sm text-emerald-500">Saved successfully</p> : null}
             </div>
           </div>

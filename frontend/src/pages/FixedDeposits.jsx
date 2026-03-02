@@ -530,7 +530,7 @@ function FixedDepositsPage() {
           onClick={closeEditModal}
         >
           <article
-            className="w-full max-w-2xl rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft"
             onClick={(event) => event.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-brand-text">Edit Fixed Deposit</h3>
@@ -636,7 +636,7 @@ function FixedDepositsPage() {
                   disabled={isUpdating}
                   className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
-                  {isUpdating ? "Saving..." : "Save"}
+                  {isUpdating ? "Saving..." : "Save Changes"}
                 </button>
                 <button
                   type="button"
