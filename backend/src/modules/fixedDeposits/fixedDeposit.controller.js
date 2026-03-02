@@ -83,13 +83,21 @@ export const recalculateAll = async (req, res, next) => {
 
 export const updateFD = async (req, res, next) => {
   try {
-    const allowedFields = ["interestRate", "maturityDate", "isAutoRenew", "notes"];
+    const allowedFields = ["interestRate", "maturityDate", "isAutoRenew", "goalId", "notes", "compounding"];
     const updates = Object.keys(req.body || {});
 
     const hasDisallowedField = updates.some((field) => !allowedFields.includes(field));
 
     if (hasDisallowedField) {
-      throw badRequestError("Only interestRate, maturityDate, isAutoRenew and notes can be updated");
+      throw badRequestError("Only interestRate, maturityDate, isAutoRenew, goalId, notes and compounding can be updated");
+    }
+
+    if (updates.includes("compounding")) {
+      const allowedCompounding = ["annual", "quarterly", "monthly"];
+
+      if (!allowedCompounding.includes(req.body.compounding)) {
+        throw badRequestError("compounding must be one of: annual, quarterly, monthly");
+      }
     }
 
     const fixedDeposit = await FixedDeposit.findByIdAndUpdate(req.params.id, req.body, {
