@@ -28,6 +28,8 @@ function HoldingsPage() {
     direction: "asc"
   });
   const [brokerFilter, setBrokerFilter] = useState("all");
+  const [instrumentTypeFilter, setInstrumentTypeFilter] = useState("all");
+  const [linkedGoalFilter, setLinkedGoalFilter] = useState("all");
   const selectAllRef = useRef(null);
 
   const fetchPageData = async () => {
@@ -102,12 +104,38 @@ function HoldingsPage() {
   ), [holdings]);
 
   const filteredHoldings = useMemo(() => {
-    if (brokerFilter === "all") {
-      return holdings;
-    }
+    return holdings.filter((holding) => {
+      const holdingBroker = String(holding.broker || "").trim().toLowerCase();
+      const holdingInstrumentType = String(holding.instrumentType || "").trim().toLowerCase();
+      const holdingGoalId = holding.goalId?._id || "unlinked";
 
-    return holdings.filter((holding) => String(holding.broker || "").trim().toLowerCase() === brokerFilter.toLowerCase());
-  }, [brokerFilter, holdings]);
+      const matchesBroker = brokerFilter === "all" || holdingBroker === brokerFilter.toLowerCase();
+      const matchesInstrumentType = instrumentTypeFilter === "all"
+        || holdingInstrumentType === instrumentTypeFilter.toLowerCase();
+      const matchesGoal = linkedGoalFilter === "all" || holdingGoalId === linkedGoalFilter;
+
+      return matchesBroker && matchesInstrumentType && matchesGoal;
+    });
+  }, [brokerFilter, holdings, instrumentTypeFilter, linkedGoalFilter]);
+
+  const instrumentTypeOptions = useMemo(() => (
+    [...new Set(holdings.map((holding) => String(holding.instrumentType || "").trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+  ), [holdings]);
+
+  const linkedGoalOptions = useMemo(() => {
+    const linkedGoalMap = new Map();
+
+    holdings.forEach((holding) => {
+      if (holding.goalId?._id && holding.goalId?.name) {
+        linkedGoalMap.set(holding.goalId._id, holding.goalId.name);
+      }
+    });
+
+    return [...linkedGoalMap.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }, [holdings]);
 
   useEffect(() => {
     const selectableHoldingIds = filteredHoldings.map((holding) => holding._id);
@@ -327,7 +355,7 @@ function HoldingsPage() {
           <p className="mt-1 text-sm text-brand-muted">Track your instruments and goal-linked allocations.</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={brokerFilter}
             onChange={(event) => setBrokerFilter(event.target.value)}
@@ -338,6 +366,35 @@ function HoldingsPage() {
             {brokerOptions.map((brokerName) => (
               <option key={brokerName} value={brokerName}>
                 {holdings.find((holding) => holding.broker === brokerName)?.brokerDisplayName || brokerName}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={instrumentTypeFilter}
+            onChange={(event) => setInstrumentTypeFilter(event.target.value)}
+            className="rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text focus:border-slate-400 focus:outline-none"
+            aria-label="Filter holdings by instrument type"
+          >
+            <option value="all">All Types</option>
+            {instrumentTypeOptions.map((instrumentType) => (
+              <option key={instrumentType} value={instrumentType}>
+                {instrumentType}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={linkedGoalFilter}
+            onChange={(event) => setLinkedGoalFilter(event.target.value)}
+            className="rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text focus:border-slate-400 focus:outline-none"
+            aria-label="Filter holdings by linked goal"
+          >
+            <option value="all">All Linked Goals</option>
+            <option value="unlinked">Unlinked</option>
+            {linkedGoalOptions.map((goal) => (
+              <option key={goal.id} value={goal.id}>
+                {goal.name}
               </option>
             ))}
           </select>
@@ -409,7 +466,7 @@ function HoldingsPage() {
       {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
       {!isLoading && !error && filteredHoldings.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel p-10 text-center text-sm text-brand-muted">
-          No holdings found for selected broker
+          No holdings found for selected filters
         </div>
       ) : null}
 
