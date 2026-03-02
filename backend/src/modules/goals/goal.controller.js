@@ -1,5 +1,6 @@
 import Goal from "./goal.model.js";
 import Holding from "../holdings/holding.model.js";
+import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 
 const notFoundError = (message) => {
@@ -91,11 +92,22 @@ export const getGoalDetail = async (req, res, next) => {
     }
 
     const goalData = goal.toObject();
-    const linkedHoldings = await Holding.find({ goalId: goal._id }).sort({ createdAt: -1 });
-    const totalAllocated = linkedHoldings.reduce(
+    const [linkedHoldings, linkedFixedDeposits] = await Promise.all([
+      Holding.find({ goalId: goal._id }).sort({ createdAt: -1 }),
+      FixedDeposit.find({
+        goalId: goal._id,
+        status: { $in: ["active", "matured"] }
+      }).sort({ maturityDate: 1 })
+    ]);
+    const holdingsAllocated = linkedHoldings.reduce(
       (sum, holding) => sum + (Number(holding.quantity || 0) * Number(holding.currentPrice || 0)),
       0
     );
+    const fixedDepositsAllocated = linkedFixedDeposits.reduce(
+      (sum, fd) => sum + Number(fd.cachedValue || 0),
+      0
+    );
+    const totalAllocated = holdingsAllocated + fixedDepositsAllocated;
     const projection = calculateProjection(goalData, totalAllocated);
 
     const futureRequired = Number(projection.futureRequired || 0);
@@ -107,6 +119,7 @@ export const getGoalDetail = async (req, res, next) => {
       goal: goalData,
       projection,
       linkedHoldings,
+      linkedFixedDeposits,
       totalAllocated,
       allocationPercent
     });

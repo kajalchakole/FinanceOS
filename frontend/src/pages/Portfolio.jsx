@@ -96,6 +96,10 @@ function PortfolioPage() {
       value: Number(summary?.totalHoldings || 0).toString()
     },
     {
+      label: "Fixed Deposits",
+      value: formatCurrency(summary?.totalFDValue)
+    },
+    {
       label: "Unassigned Capital",
       value: formatPercent(summary?.unassignedPercent),
       helper: formatCurrency(summary?.unassignedValue)

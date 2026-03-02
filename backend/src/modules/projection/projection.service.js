@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import Holding from "../holdings/holding.model.js";
+import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 
 export const calculateProjection = (goal, corpusBase = 0) => {
   const currentYear = new Date().getFullYear();
@@ -58,7 +59,7 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
     return {};
   }
 
-  const corpusRows = await Holding.aggregate([
+  const holdingCorpusRows = await Holding.aggregate([
     {
       $match: {
         goalId: {
@@ -77,9 +78,30 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
       }
     }
   ]);
+  const fdCorpusRows = await FixedDeposit.aggregate([
+    {
+      $match: {
+        goalId: {
+          $in: validGoalIds
+        },
+        status: {
+          $in: ["active", "matured"]
+        }
+      }
+    },
+    {
+      $group: {
+        _id: "$goalId",
+        corpus: {
+          $sum: "$cachedValue"
+        }
+      }
+    }
+  ]);
 
-  return corpusRows.reduce((accumulator, row) => {
-    accumulator[row._id.toString()] = row.corpus;
+  return [...holdingCorpusRows, ...fdCorpusRows].reduce((accumulator, row) => {
+    const goalId = row._id.toString();
+    accumulator[goalId] = Number(accumulator[goalId] || 0) + Number(row.corpus || 0);
     return accumulator;
   }, {});
 };
