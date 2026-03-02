@@ -8,14 +8,17 @@ const badRequestError = (message) => {
 
 const FD_INTERVAL_KEY = "fdRecalculationIntervalDays";
 const EPF_INTERVAL_KEY = "epfRefreshIntervalHours";
+const NPS_INTERVAL_KEY = "npsRefreshIntervalHours";
 const DEFAULT_FD_INTERVAL_DAYS = 1;
 const DEFAULT_EPF_INTERVAL_HOURS = 24 * 7;
+const DEFAULT_NPS_INTERVAL_HOURS = 24 * 7;
 
 export const getSettings = async (req, res, next) => {
   try {
-    const [fdIntervalSetting, epfIntervalSetting] = await Promise.all([
+    const [fdIntervalSetting, epfIntervalSetting, npsIntervalSetting] = await Promise.all([
       Setting.findOne({ key: FD_INTERVAL_KEY }).lean(),
-      Setting.findOne({ key: EPF_INTERVAL_KEY }).lean()
+      Setting.findOne({ key: EPF_INTERVAL_KEY }).lean(),
+      Setting.findOne({ key: NPS_INTERVAL_KEY }).lean()
     ]);
 
     const parsedFdInterval = Number(fdIntervalSetting?.value);
@@ -27,8 +30,12 @@ export const getSettings = async (req, res, next) => {
     const epfRefreshIntervalHours = Number.isFinite(parsedEpfInterval) && parsedEpfInterval > 0
       ? parsedEpfInterval
       : DEFAULT_EPF_INTERVAL_HOURS;
+    const parsedNpsInterval = Number(npsIntervalSetting?.value);
+    const npsRefreshIntervalHours = Number.isFinite(parsedNpsInterval) && parsedNpsInterval > 0
+      ? parsedNpsInterval
+      : DEFAULT_NPS_INTERVAL_HOURS;
 
-    res.status(200).json({ fdRecalculationIntervalDays, epfRefreshIntervalHours });
+    res.status(200).json({ fdRecalculationIntervalDays, epfRefreshIntervalHours, npsRefreshIntervalHours });
   } catch (error) {
     next(error);
   }
@@ -70,6 +77,26 @@ export const updateEPFInterval = async (req, res, next) => {
     );
 
     res.status(200).json({ epfRefreshIntervalHours: intervalHours });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateNPSInterval = async (req, res, next) => {
+  try {
+    const intervalHours = Number(req.body?.intervalHours);
+
+    if (!Number.isInteger(intervalHours) || intervalHours < 1 || intervalHours > 24 * 365) {
+      throw badRequestError("intervalHours must be an integer between 1 and 8760");
+    }
+
+    await Setting.findOneAndUpdate(
+      { key: NPS_INTERVAL_KEY },
+      { key: NPS_INTERVAL_KEY, value: intervalHours },
+      { upsert: true, new: true, runValidators: true }
+    );
+
+    res.status(200).json({ npsRefreshIntervalHours: intervalHours });
   } catch (error) {
     next(error);
   }

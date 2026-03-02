@@ -3,8 +3,12 @@ import mongoose from "mongoose";
 import Holding from "../holdings/holding.model.js";
 import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import EpfAccount from "../epf/epf.model.js";
+import NpsAccount from "../nps/nps.model.js";
 import Goal from "../goals/goal.model.js";
 const activeEpfAccountFilter = {
+  $or: [{ isActive: true }, { isActive: { $exists: false } }]
+};
+const activeNpsAccountFilter = {
   $or: [{ isActive: true }, { isActive: { $exists: false } }]
 };
 
@@ -66,14 +70,15 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
 
   const goals = await Goal.find(
     { _id: { $in: validGoalIds } },
-    { useEpf: 1 }
+    { useEpf: 1, useNps: 1 }
   ).lean();
 
-  const epfAccounts = await EpfAccount.find(activeEpfAccountFilter).lean();
-  const totalEpfValue = epfAccounts.reduce(
-    (sum, account) => sum + Number(account.cachedValue || 0),
-    0
-  );
+  const [epfAccounts, npsAccounts] = await Promise.all([
+    EpfAccount.find(activeEpfAccountFilter).lean(),
+    NpsAccount.find(activeNpsAccountFilter).lean()
+  ]);
+  const totalEpfValue = epfAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0);
+  const totalNpsValue = npsAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0);
 
   const holdingCorpusRows = await Holding.aggregate([
     {
@@ -126,12 +131,16 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
     const linkedHoldingsValue = Number(corpusByGoalId[goalId] || 0);
 
     let epfValue = 0;
+    let npsValue = 0;
 
     if (goal.useEpf) {
       epfValue = totalEpfValue;
     }
+    if (goal.useNps) {
+      npsValue = totalNpsValue;
+    }
 
-    corpusByGoalId[goalId] = linkedHoldingsValue + epfValue;
+    corpusByGoalId[goalId] = linkedHoldingsValue + epfValue + npsValue;
   });
 
   return corpusByGoalId;
