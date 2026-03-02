@@ -11,6 +11,7 @@ import {
 
 const require = createRequire(import.meta.url);
 const { BreezeConnect } = require("breezeconnect");
+const BREEZE_LOGIN_URL = "https://api.icicidirect.com/apiuser/login";
 
 const getBreezeConfig = () => ({
   apiKey: process.env.BREEZE_API_KEY?.trim() || "",
@@ -47,6 +48,95 @@ const getErrorMessage = (error) => {
 };
 
 const getHoldingItems = (response) => {
+  const toCanonicalKeyLocal = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  const getValueByFlexibleKeyLocal = (item, key) => {
+    if (!item || typeof item !== "object") {
+      return undefined;
+    }
+
+    const targetKey = toCanonicalKeyLocal(key);
+
+    for (const [itemKey, itemValue] of Object.entries(item)) {
+      if (toCanonicalKeyLocal(itemKey) === targetKey) {
+        return itemValue;
+      }
+    }
+
+    return undefined;
+  };
+
+  const isLikelyHoldingRow = (row) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      return false;
+    }
+
+    const nameLikeKeys = [
+      "security_name",
+      "stock_name",
+      "display_name",
+      "fund_name",
+      "symbol",
+      "tradingsymbol",
+      "stock_code",
+      "isin"
+    ];
+    const quantityLikeKeys = [
+      "quantity",
+      "qty",
+      "holding_qty",
+      "available_qty",
+      "units",
+      "unit"
+    ];
+    const valueLikeKeys = [
+      "ltp",
+      "last_price",
+      "current_price",
+      "market_price",
+      "nav",
+      "market_value",
+      "current_value"
+    ];
+
+    const hasNameLikeField = nameLikeKeys.some((key) => {
+      const value = getValueByFlexibleKeyLocal(row, key);
+      return value !== null && value !== undefined && String(value).trim() !== "";
+    });
+    const hasQuantityLikeField = quantityLikeKeys.some((key) => {
+      const value = getValueByFlexibleKeyLocal(row, key);
+      return value !== null && value !== undefined && String(value).trim() !== "";
+    });
+    const hasValueLikeField = valueLikeKeys.some((key) => {
+      const value = getValueByFlexibleKeyLocal(row, key);
+      return value !== null && value !== undefined && String(value).trim() !== "";
+    });
+
+    return hasNameLikeField || (hasQuantityLikeField && hasValueLikeField);
+  };
+
+  const getRowSignature = (row) => {
+    const parts = [
+      getValueByFlexibleKeyLocal(row, "security_name"),
+      getValueByFlexibleKeyLocal(row, "stock_name"),
+      getValueByFlexibleKeyLocal(row, "fund_name"),
+      getValueByFlexibleKeyLocal(row, "symbol"),
+      getValueByFlexibleKeyLocal(row, "stock_code"),
+      getValueByFlexibleKeyLocal(row, "isin"),
+      getValueByFlexibleKeyLocal(row, "instrument_type"),
+      getValueByFlexibleKeyLocal(row, "product_type"),
+      getValueByFlexibleKeyLocal(row, "segment"),
+      getValueByFlexibleKeyLocal(row, "quantity"),
+      getValueByFlexibleKeyLocal(row, "qty"),
+      getValueByFlexibleKeyLocal(row, "holding_qty"),
+      getValueByFlexibleKeyLocal(row, "units")
+    ];
+
+    return parts
+      .map((part) => String(part || "").trim().toLowerCase())
+      .join("::");
+  };
+
   const findArraysDeep = (value, depth = 0) => {
     if (depth > 6 || value === null || value === undefined) {
       return [];
@@ -73,26 +163,54 @@ const getHoldingItems = (response) => {
     return [];
   }
 
+  const candidateArrays = [];
+
   if (Array.isArray(response)) {
-    return response;
+    candidateArrays.push(response);
   }
 
-  if (Array.isArray(response.Success)) {
-    return response.Success;
+  if (Array.isArray(response?.Success)) {
+    candidateArrays.push(response.Success);
   }
 
-  if (Array.isArray(response.success)) {
-    return response.success;
+  if (Array.isArray(response?.success)) {
+    candidateArrays.push(response.success);
   }
 
-  if (Array.isArray(response.data)) {
-    return response.data;
+  if (Array.isArray(response?.data)) {
+    candidateArrays.push(response.data);
   }
 
-  const nestedArrays = findArraysDeep(response)
+  candidateArrays.push(...findArraysDeep(response));
+
+  const nestedArrays = candidateArrays
     .filter((arrayValue) => arrayValue.length > 0)
     .sort((left, right) => right.length - left.length);
 
+  const mergedRows = [];
+  const seenSignatures = new Set();
+
+  for (const arrayCandidate of nestedArrays) {
+    for (const row of arrayCandidate) {
+      if (!isLikelyHoldingRow(row)) {
+        continue;
+      }
+
+      const signature = getRowSignature(row);
+      if (seenSignatures.has(signature)) {
+        continue;
+      }
+
+      seenSignatures.add(signature);
+      mergedRows.push(row);
+    }
+  }
+
+  if (mergedRows.length > 0) {
+    return mergedRows;
+  }
+
+  // Fallback to previous behavior when shape is unexpected.
   for (const candidate of nestedArrays) {
     if (candidate.some((row) => row && typeof row === "object")) {
       return candidate;
@@ -608,6 +726,16 @@ export const isBreezeConnected = (brokerAuth = null) => {
   const { apiKey, sessionToken } = getBreezeConfig();
   const storedSessionToken = brokerAuth?.sessionToken?.trim() || "";
   return Boolean(apiKey && (sessionToken || storedSessionToken));
+};
+
+export const getBreezeConnectUrl = () => {
+  const { apiKey } = getBreezeConfig();
+
+  if (!apiKey) {
+    throw brokerNotConnectedError("breeze", "Broker not connected. Please connect first.");
+  }
+
+  return `${BREEZE_LOGIN_URL}?api_key=${encodeURIComponent(apiKey)}`;
 };
 
 const createBreezeClient = async () => {

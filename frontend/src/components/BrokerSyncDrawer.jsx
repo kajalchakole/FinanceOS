@@ -85,9 +85,7 @@ function BrokerSyncDrawer({
       if (status === 400 && code === "BROKER_NOT_SUPPORTED") {
         setUiState(broker.name, {
           mode: "failed",
-          message: broker.name === "breeze"
-            ? "Breeze reconnect is env-based. Update BREEZE_SESSION_TOKEN in backend env."
-            : message
+          message
         });
         return;
       }

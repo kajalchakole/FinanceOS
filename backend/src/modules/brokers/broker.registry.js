@@ -1,5 +1,5 @@
 import { connectKiteWithRequestToken, getKiteConnectUrl, syncKiteHoldings } from "./kite/kite.service.js";
-import { handleBreezeCallback, syncBreezeHoldings } from "./breeze/breeze.service.js";
+import { getBreezeConnectUrl, handleBreezeCallback, syncBreezeHoldings } from "./breeze/breeze.service.js";
 import { brokerNotSupportedError } from "./broker.errors.js";
 import {
   connectHdfcWithRequestToken,
@@ -36,7 +36,7 @@ export const brokerRegistry = {
   breeze: {
     displayName: "ICICI Demat",
     syncHoldings: syncBreezeHoldings,
-    getConnectUrl: () => unsupportedConnect("breeze"),
+    getConnectUrl: () => getBreezeConnectUrl(),
     handleCallback: async (req) => {
       await handleBreezeCallback(req);
     }
