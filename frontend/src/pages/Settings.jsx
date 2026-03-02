@@ -5,9 +5,11 @@ import api from "../services/api";
 function SettingsPage() {
   const [intervalDays, setIntervalDays] = useState("1");
   const [epfIntervalHours, setEpfIntervalHours] = useState("168");
+  const [npsIntervalHours, setNpsIntervalHours] = useState("168");
   const [loading, setLoading] = useState(true);
   const [savingFd, setSavingFd] = useState(false);
   const [savingEpf, setSavingEpf] = useState(false);
+  const [savingNps, setSavingNps] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
@@ -24,6 +26,10 @@ function SettingsPage() {
 
         if (isMounted && Number.isFinite(response.data?.epfRefreshIntervalHours)) {
           setEpfIntervalHours(String(response.data.epfRefreshIntervalHours));
+        }
+
+        if (isMounted && Number.isFinite(response.data?.npsRefreshIntervalHours)) {
+          setNpsIntervalHours(String(response.data.npsRefreshIntervalHours));
         }
       } finally {
         if (isMounted) {
@@ -83,6 +89,28 @@ function SettingsPage() {
     }
   };
 
+  const handleSaveNPS = async () => {
+    const parsedInterval = Number(npsIntervalHours);
+
+    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 24 * 365) {
+      setError("NPS interval must be an integer between 1 and 8760.");
+      return;
+    }
+
+    setError("");
+    setSavingNps(true);
+
+    try {
+      await api.patch("/settings/nps-interval", { intervalHours: parsedInterval });
+      setSuccess("NPS settings saved");
+      setTimeout(() => setSuccess(""), 2000);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to save NPS settings");
+    } finally {
+      setSavingNps(false);
+    }
+  };
+
   return (
     <section className="rounded-2xl border border-brand-line bg-brand-panel p-8 shadow-soft">
       <h2 className="text-2xl font-semibold tracking-tight text-brand-text">Settings</h2>
@@ -124,6 +152,24 @@ function SettingsPage() {
             />
             <button type="button" className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" disabled={savingEpf} onClick={handleSaveEPF}>
               {savingEpf ? "Saving..." : "Save EPF"}
+            </button>
+          </div>
+
+          <div className="border-t border-brand-line pt-6">
+            <h3 className="text-lg font-semibold text-brand-text">NPS Refresh</h3>
+            <label className="mb-2 mt-4 block text-sm font-medium text-brand-text" htmlFor="npsRefreshInterval">Refresh Interval (Hours)</label>
+            <input
+              id="npsRefreshInterval"
+              className="w-full max-w-xs rounded-xl border border-brand-line bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-accent"
+              type="number"
+              min={1}
+              max={8760}
+              step={1}
+              value={npsIntervalHours}
+              onChange={(event) => setNpsIntervalHours(event.target.value)}
+            />
+            <button type="button" className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" disabled={savingNps} onClick={handleSaveNPS}>
+              {savingNps ? "Saving..." : "Save NPS"}
             </button>
           </div>
 

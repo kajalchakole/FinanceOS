@@ -2,6 +2,7 @@ import Goal from "../goals/goal.model.js";
 import Holding from "../holdings/holding.model.js";
 import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import EpfAccount from "../epf/epf.model.js";
+import NpsAccount from "../nps/nps.model.js";
 import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 
 export const getDashboardSummary = async () => {
@@ -12,7 +13,7 @@ export const getDashboardSummary = async () => {
     .map((goal) => calculateProjection(goal, corpusByGoalId[goal._id.toString()] || 0))
     .filter((projection) => projection.status === "On Track" || projection.status === "At Risk");
 
-  const [holdingsNetWorthAggregation, fdNetWorthAggregation, epfNetWorthAggregation] = await Promise.all([
+  const [holdingsNetWorthAggregation, fdNetWorthAggregation, epfNetWorthAggregation, npsNetWorthAggregation] = await Promise.all([
     Holding.aggregate([
       {
         $group: {
@@ -54,6 +55,21 @@ export const getDashboardSummary = async () => {
           }
         }
       }
+    ]),
+    NpsAccount.aggregate([
+      {
+        $match: {
+          $or: [{ isActive: true }, { isActive: { $exists: false } }]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          netWorth: {
+            $sum: "$cachedValue"
+          }
+        }
+      }
     ])
   ]);
 
@@ -80,6 +96,7 @@ export const getDashboardSummary = async () => {
     netWorth:
       Number(holdingsNetWorthAggregation[0]?.netWorth || 0) +
       Number(fdNetWorthAggregation[0]?.netWorth || 0) +
-      Number(epfNetWorthAggregation[0]?.netWorth || 0)
+      Number(epfNetWorthAggregation[0]?.netWorth || 0) +
+      Number(npsNetWorthAggregation[0]?.netWorth || 0)
   };
 };

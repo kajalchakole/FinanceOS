@@ -8,6 +8,7 @@ const links = [
   { label: "Portfolio", to: "/portfolio" },
   { label: "Fixed Deposits", to: "/fixed-deposits" },
   { label: "EPF", to: "/epf" },
+  { label: "NPS", to: "/nps" },
   { label: "Settings", to: "/settings" }
 ];
 

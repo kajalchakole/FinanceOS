@@ -108,6 +108,10 @@ function PortfolioPage() {
       value: formatCurrency(summary?.totalEpfValue)
     },
     {
+      label: "NPS",
+      value: formatCurrency(summary?.totalNpsValue)
+    },
+    {
       label: "Unassigned Capital",
       value: formatPercent(summary?.unassignedPercent),
       helper: formatCurrency(summary?.unassignedValue)

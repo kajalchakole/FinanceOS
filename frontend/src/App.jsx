@@ -8,6 +8,7 @@ import CreateGoalPage from "./pages/CreateGoal";
 import DashboardPage from "./pages/Dashboard";
 import FixedDepositsPage from "./pages/FixedDeposits";
 import EPFPage from "./pages/EPF";
+import NPSPage from "./pages/NPS";
 import GoalDetailPage from "./pages/GoalDetail";
 import GoalsPage from "./pages/Goals";
 import HoldingsPage from "./pages/Holdings";
@@ -31,6 +32,7 @@ function App() {
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/fixed-deposits" element={<FixedDepositsPage />} />
           <Route path="/epf" element={<EPFPage />} />
+          <Route path="/nps" element={<NPSPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>
