@@ -1,4 +1,5 @@
 import Holding from "../holdings/holding.model.js";
+import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 
 const getHoldingValue = (holding) => Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
@@ -32,16 +33,44 @@ const buildGroupedAllocation = (holdings, keySelector, netWorth) => {
 
 export const getPortfolioSummary = async () => {
   const holdings = await Holding.find().lean();
+  const fdAggregation = await FixedDeposit.aggregate([
+    {
+      $match: {
+        status: { $in: ["active", "matured"] }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$cachedValue" }
+      }
+    }
+  ]);
+
+  const totalFDValue = fdAggregation.length > 0 ? fdAggregation[0].total : 0;
   const holdingsWithValue = holdings.map((holding) => ({
     ...holding,
     value: getHoldingValue(holding),
     investedValue: getInvestedValue(holding)
   }));
 
-  const netWorth = holdingsWithValue.reduce((sum, holding) => sum + holding.value, 0);
+  const totalMarketValue = holdingsWithValue.reduce((sum, holding) => sum + holding.value, 0);
+  const netWorth = totalMarketValue + totalFDValue;
   const totalInvested = holdingsWithValue.reduce((sum, holding) => sum + holding.investedValue, 0);
   const totalProfit = netWorth - totalInvested;
   const totalHoldings = holdingsWithValue.length;
+  const allocation = {
+    equity: holdingsWithValue
+      .filter((holding) => (holding.instrumentType || "").toLowerCase() === "equity")
+      .reduce((sum, holding) => sum + holding.value, 0),
+    mutualFunds: holdingsWithValue
+      .filter((holding) => (holding.instrumentType || "").toLowerCase() === "mutual fund")
+      .reduce((sum, holding) => sum + holding.value, 0),
+    etf: holdingsWithValue
+      .filter((holding) => (holding.instrumentType || "").toLowerCase() === "etf")
+      .reduce((sum, holding) => sum + holding.value, 0),
+    fixedDeposits: totalFDValue
+  };
   const unassignedValue = holdingsWithValue
     .filter((holding) => !holding.goalId)
     .reduce((sum, holding) => sum + holding.value, 0);
@@ -82,6 +111,9 @@ export const getPortfolioSummary = async () => {
 
   return {
     netWorth,
+    totalMarketValue,
+    totalFDValue,
+    allocation,
     totalInvested,
     totalProfit,
     totalProfitPercent: getPercentage(totalProfit, totalInvested),

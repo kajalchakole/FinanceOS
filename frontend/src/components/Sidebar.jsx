@@ -6,6 +6,7 @@ const links = [
   { label: "Goals", to: "/goals" },
   { label: "Holdings", to: "/holdings" },
   { label: "Portfolio", to: "/portfolio" },
+  { label: "Fixed Deposits", to: "/fixed-deposits" },
   { label: "Settings", to: "/settings" }
 ];
 
