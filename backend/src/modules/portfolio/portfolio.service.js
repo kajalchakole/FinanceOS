@@ -1,5 +1,7 @@
 import Holding from "../holdings/holding.model.js";
 import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
+import EpfAccount from "../epf/epf.model.js";
+import Goal from "../goals/goal.model.js";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 
 const getHoldingValue = (holding) => Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
@@ -33,7 +35,8 @@ const buildGroupedAllocation = (holdings, keySelector, netWorth) => {
 
 export const getPortfolioSummary = async () => {
   const holdings = await Holding.find().lean();
-  const [fdAggregation, unlinkedFDAggregation] = await Promise.all([
+
+  const [fdAggregation, unlinkedFDAggregation, epfAggregation, goalUsingEpf] = await Promise.all([
     FixedDeposit.aggregate([
       {
         $match: {
@@ -60,11 +63,28 @@ export const getPortfolioSummary = async () => {
           total: { $sum: "$cachedValue" }
         }
       }
-    ])
+    ]),
+    EpfAccount.aggregate([
+      {
+        $match: {
+          $or: [{ isActive: true }, { isActive: { $exists: false } }]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$cachedValue" }
+        }
+      }
+    ]),
+    Goal.findOne({ useEpf: true }, { _id: 1 }).lean()
   ]);
 
-  const totalFDValue = fdAggregation.length > 0 ? fdAggregation[0].total : 0;
-  const unlinkedFDValue = unlinkedFDAggregation.length > 0 ? unlinkedFDAggregation[0].total : 0;
+  const totalFDValue = fdAggregation.length > 0 ? Number(fdAggregation[0].total || 0) : 0;
+  const unlinkedFDValue = unlinkedFDAggregation.length > 0 ? Number(unlinkedFDAggregation[0].total || 0) : 0;
+  const totalEpfValue = epfAggregation.length > 0 ? Number(epfAggregation[0].total || 0) : 0;
+  const unlinkedEpfValue = goalUsingEpf ? 0 : totalEpfValue;
+
   const holdingsWithValue = holdings.map((holding) => ({
     ...holding,
     value: getHoldingValue(holding),
@@ -72,10 +92,11 @@ export const getPortfolioSummary = async () => {
   }));
 
   const totalMarketValue = holdingsWithValue.reduce((sum, holding) => sum + holding.value, 0);
-  const netWorth = totalMarketValue + totalFDValue;
+  const netWorth = totalMarketValue + totalFDValue + totalEpfValue;
   const totalInvested = holdingsWithValue.reduce((sum, holding) => sum + holding.investedValue, 0);
   const totalProfit = netWorth - totalInvested;
   const totalHoldings = holdingsWithValue.length;
+
   const allocation = {
     equity: holdingsWithValue
       .filter((holding) => (holding.instrumentType || "").toLowerCase() === "equity")
@@ -86,12 +107,14 @@ export const getPortfolioSummary = async () => {
     etf: holdingsWithValue
       .filter((holding) => (holding.instrumentType || "").toLowerCase() === "etf")
       .reduce((sum, holding) => sum + holding.value, 0),
-    fixedDeposits: totalFDValue
+    fixedDeposits: totalFDValue,
+    epf: totalEpfValue
   };
+
   const unassignedHoldingsValue = holdingsWithValue
     .filter((holding) => !holding.goalId)
     .reduce((sum, holding) => sum + holding.value, 0);
-  const unassignedValue = unassignedHoldingsValue + Number(unlinkedFDValue || 0);
+  const unassignedValue = unassignedHoldingsValue + unlinkedFDValue + unlinkedEpfValue;
 
   const allocationByBroker = buildGroupedAllocation(
     holdingsWithValue,
@@ -108,13 +131,23 @@ export const getPortfolioSummary = async () => {
     netWorth
   );
 
-  if (Number(totalFDValue) > 0) {
+  if (totalFDValue > 0) {
     allocationByInstrumentType.push({
       name: "Fixed Deposits",
-      value: Number(totalFDValue),
-      percentOfNetWorth: getPercentage(Number(totalFDValue), netWorth)
+      value: totalFDValue,
+      percentOfNetWorth: getPercentage(totalFDValue, netWorth)
     });
+  }
 
+  if (totalEpfValue > 0) {
+    allocationByInstrumentType.push({
+      name: "EPF",
+      value: totalEpfValue,
+      percentOfNetWorth: getPercentage(totalEpfValue, netWorth)
+    });
+  }
+
+  if (totalFDValue > 0 || totalEpfValue > 0) {
     allocationByInstrumentType.sort((a, b) => b.value - a.value);
   }
 
@@ -141,6 +174,7 @@ export const getPortfolioSummary = async () => {
     netWorth,
     totalMarketValue,
     totalFDValue,
+    totalEpfValue,
     allocation,
     totalInvested,
     totalProfit,

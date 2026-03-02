@@ -96,8 +96,16 @@ function PortfolioPage() {
       value: Number(summary?.totalHoldings || 0).toString()
     },
     {
+      label: "Market Holdings",
+      value: formatCurrency(summary?.totalMarketValue)
+    },
+    {
       label: "Fixed Deposits",
       value: formatCurrency(summary?.totalFDValue)
+    },
+    {
+      label: "EPF",
+      value: formatCurrency(summary?.totalEpfValue)
     },
     {
       label: "Unassigned Capital",

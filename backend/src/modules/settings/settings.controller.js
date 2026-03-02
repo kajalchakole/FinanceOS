@@ -7,17 +7,28 @@ const badRequestError = (message) => {
 };
 
 const FD_INTERVAL_KEY = "fdRecalculationIntervalDays";
+const EPF_INTERVAL_KEY = "epfRefreshIntervalHours";
 const DEFAULT_FD_INTERVAL_DAYS = 1;
+const DEFAULT_EPF_INTERVAL_HOURS = 24 * 7;
 
 export const getSettings = async (req, res, next) => {
   try {
-    const intervalSetting = await Setting.findOne({ key: FD_INTERVAL_KEY }).lean();
-    const parsedInterval = Number(intervalSetting?.value);
-    const fdRecalculationIntervalDays = Number.isFinite(parsedInterval) && parsedInterval > 0
-      ? parsedInterval
+    const [fdIntervalSetting, epfIntervalSetting] = await Promise.all([
+      Setting.findOne({ key: FD_INTERVAL_KEY }).lean(),
+      Setting.findOne({ key: EPF_INTERVAL_KEY }).lean()
+    ]);
+
+    const parsedFdInterval = Number(fdIntervalSetting?.value);
+    const fdRecalculationIntervalDays = Number.isFinite(parsedFdInterval) && parsedFdInterval > 0
+      ? parsedFdInterval
       : DEFAULT_FD_INTERVAL_DAYS;
 
-    res.status(200).json({ fdRecalculationIntervalDays });
+    const parsedEpfInterval = Number(epfIntervalSetting?.value);
+    const epfRefreshIntervalHours = Number.isFinite(parsedEpfInterval) && parsedEpfInterval > 0
+      ? parsedEpfInterval
+      : DEFAULT_EPF_INTERVAL_HOURS;
+
+    res.status(200).json({ fdRecalculationIntervalDays, epfRefreshIntervalHours });
   } catch (error) {
     next(error);
   }
@@ -38,6 +49,27 @@ export const updateFDInterval = async (req, res, next) => {
     );
 
     res.status(200).json({ fdRecalculationIntervalDays: intervalDays });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const updateEPFInterval = async (req, res, next) => {
+  try {
+    const intervalHours = Number(req.body?.intervalHours);
+
+    if (!Number.isInteger(intervalHours) || intervalHours < 1 || intervalHours > 24 * 365) {
+      throw badRequestError("intervalHours must be an integer between 1 and 8760");
+    }
+
+    await Setting.findOneAndUpdate(
+      { key: EPF_INTERVAL_KEY },
+      { key: EPF_INTERVAL_KEY, value: intervalHours },
+      { upsert: true, new: true, runValidators: true }
+    );
+
+    res.status(200).json({ epfRefreshIntervalHours: intervalHours });
   } catch (error) {
     next(error);
   }
