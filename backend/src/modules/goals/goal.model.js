@@ -42,6 +42,10 @@ const goalSchema = new mongoose.Schema({
   startYear: {
     type: Number
   },
+  useEpf: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 import Holding from "../holdings/holding.model.js";
 import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
+import EpfAccount from "../epf/epf.model.js";
+import Goal from "../goals/goal.model.js";
+const activeEpfAccountFilter = {
+  $or: [{ isActive: true }, { isActive: { $exists: false } }]
+};
 
 export const calculateProjection = (goal, corpusBase = 0) => {
   const currentYear = new Date().getFullYear();
@@ -59,6 +64,17 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
     return {};
   }
 
+  const goals = await Goal.find(
+    { _id: { $in: validGoalIds } },
+    { useEpf: 1 }
+  ).lean();
+
+  const epfAccounts = await EpfAccount.find(activeEpfAccountFilter).lean();
+  const totalEpfValue = epfAccounts.reduce(
+    (sum, account) => sum + Number(account.cachedValue || 0),
+    0
+  );
+
   const holdingCorpusRows = await Holding.aggregate([
     {
       $match: {
@@ -99,9 +115,24 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
     }
   ]);
 
-  return [...holdingCorpusRows, ...fdCorpusRows].reduce((accumulator, row) => {
+  const corpusByGoalId = [...holdingCorpusRows, ...fdCorpusRows].reduce((accumulator, row) => {
     const goalId = row._id.toString();
     accumulator[goalId] = Number(accumulator[goalId] || 0) + Number(row.corpus || 0);
     return accumulator;
   }, {});
+
+  goals.forEach((goal) => {
+    const goalId = goal._id.toString();
+    const linkedHoldingsValue = Number(corpusByGoalId[goalId] || 0);
+
+    let epfValue = 0;
+
+    if (goal.useEpf) {
+      epfValue = totalEpfValue;
+    }
+
+    corpusByGoalId[goalId] = linkedHoldingsValue + epfValue;
+  });
+
+  return corpusByGoalId;
 };

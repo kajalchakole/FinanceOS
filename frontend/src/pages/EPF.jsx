@@ -13,12 +13,15 @@ const initialFormData = {
 
 function EPFPage() {
   const [accounts, setAccounts] = useState([]);
+  const [goals, setGoals] = useState([]);
+  const [selectedGoalId, setSelectedGoalId] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingGoalSelection, setSavingGoalSelection] = useState(false);
   const [recalculatingId, setRecalculatingId] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -30,10 +33,18 @@ function EPFPage() {
     setAccounts(rows);
   };
 
+  const fetchGoals = async () => {
+    const response = await api.get("/goals");
+    const rows = Array.isArray(response.data) ? response.data : [];
+    setGoals(rows);
+    const epfGoal = rows.find((goal) => goal.useEpf);
+    setSelectedGoalId(epfGoal?._id || "");
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
-        await fetchAccounts();
+        await Promise.all([fetchAccounts(), fetchGoals()]);
       } catch (requestError) {
         setError(requestError.response?.data?.message || "Unable to load EPF accounts");
       } finally {
@@ -43,6 +54,31 @@ function EPFPage() {
 
     load();
   }, []);
+
+  const handleSaveEpfGoalSelection = async () => {
+    setError("");
+    setSuccess("");
+    setWarning("");
+    setSavingGoalSelection(true);
+
+    try {
+      const currentEpfGoal = goals.find((goal) => goal.useEpf);
+
+      if (selectedGoalId) {
+        await api.put(`/goals/${selectedGoalId}`, { useEpf: true });
+      } else if (currentEpfGoal?._id) {
+        await api.put(`/goals/${currentEpfGoal._id}`, { useEpf: false });
+      }
+
+      await fetchGoals();
+      window.dispatchEvent(new CustomEvent("dashboard:refresh"));
+      setSuccess("EPF goal selection updated");
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to update EPF goal selection");
+    } finally {
+      setSavingGoalSelection(false);
+    }
+  };
 
   const closeModal = () => {
     setShowModal(false);
@@ -73,7 +109,7 @@ function EPFPage() {
       openingBalanceAsOf: account.openingBalanceAsOf ? account.openingBalanceAsOf.slice(0, 10) : "",
       monthlyContribution: account.monthlyContribution ?? 0,
       annualInterestRatePct: account.annualInterestRatePct ?? 0,
-      isActive: Boolean(account.isActive)
+      isActive: account.isActive !== false
     });
     setShowModal(true);
   };
@@ -189,6 +225,37 @@ function EPFPage() {
       {loading ? <p className="mt-6 text-sm text-brand-muted">Loading...</p> : null}
 
       {!loading ? (
+        <div className="mt-6 rounded-2xl border border-brand-line bg-white p-5">
+          <h3 className="text-base font-semibold text-brand-text">EPF Goal Assignment</h3>
+          <p className="mt-1 text-sm text-brand-muted">Select one goal to receive full EPF corpus.</p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <select
+              value={selectedGoalId}
+              onChange={(event) => setSelectedGoalId(event.target.value)}
+              disabled={goals.length === 0 || savingGoalSelection}
+              className="w-full rounded-xl border border-brand-line px-3 py-2 text-sm outline-none transition focus:border-slate-400"
+            >
+              <option value="">Do not link EPF to any goal</option>
+              {goals.map((goal) => (
+                <option key={goal._id} value={goal._id}>{goal.name}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleSaveEpfGoalSelection}
+              disabled={goals.length === 0 || savingGoalSelection}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingGoalSelection ? "Saving..." : "Save Goal"}
+            </button>
+          </div>
+          {goals.length === 0 ? (
+            <p className="mt-2 text-xs text-brand-muted">Create a goal first to link EPF.</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!loading ? (
         <div className="mt-6 overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
             <thead>
@@ -197,6 +264,7 @@ function EPFPage() {
                 <th className="px-3 py-2">Opening Balance</th>
                 <th className="px-3 py-2">Monthly Contribution</th>
                 <th className="px-3 py-2">Interest %</th>
+                <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Cached Current Value</th>
                 <th className="px-3 py-2">Last Refreshed</th>
                 <th className="px-3 py-2">Actions</th>
@@ -209,6 +277,7 @@ function EPFPage() {
                   <td className="px-3 py-3">{formatCurrency(account.openingBalance)}</td>
                   <td className="px-3 py-3">{formatCurrency(account.monthlyContribution)}</td>
                   <td className="px-3 py-3">{Number(account.annualInterestRatePct || 0).toFixed(2)}%</td>
+                  <td className="px-3 py-3">{account.isActive === false ? "Inactive" : "Active"}</td>
                   <td className="px-3 py-3">{formatCurrency(account.cachedValue)}</td>
                   <td className="px-3 py-3">{formatDateTime(account.cachedAt)}</td>
                   <td className="px-3 py-3">
@@ -242,11 +311,63 @@ function EPFPage() {
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-soft">
             <h3 className="text-lg font-semibold text-brand-text">{isEditMode ? "Edit EPF" : "Add EPF"}</h3>
             <form className="mt-4 space-y-4" onSubmit={handleSave}>
-              <input className="w-full rounded-xl border border-brand-line px-3 py-2" name="name" placeholder="Name" value={formData.name} onChange={handleInputChange} />
-              <input className="w-full rounded-xl border border-brand-line px-3 py-2" name="openingBalance" type="number" min={0} placeholder="Opening Balance" value={formData.openingBalance} onChange={handleInputChange} />
-              <input className="w-full rounded-xl border border-brand-line px-3 py-2" name="openingBalanceAsOf" type="date" value={formData.openingBalanceAsOf} onChange={handleInputChange} />
-              <input className="w-full rounded-xl border border-brand-line px-3 py-2" name="monthlyContribution" type="number" min={0} placeholder="Monthly Contribution" value={formData.monthlyContribution} onChange={handleInputChange} />
-              <input className="w-full rounded-xl border border-brand-line px-3 py-2" name="annualInterestRatePct" type="number" min={0} step="0.01" placeholder="Annual Interest Rate (%)" value={formData.annualInterestRatePct} onChange={handleInputChange} />
+              <label className="block space-y-1 text-sm text-brand-text">
+                <span className="font-medium">Name</span>
+                <input
+                  className="w-full rounded-xl border border-brand-line px-3 py-2"
+                  name="name"
+                  placeholder="e.g. EPF Primary"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                />
+              </label>
+              <label className="block space-y-1 text-sm text-brand-text">
+                <span className="font-medium">Opening Balance</span>
+                <input
+                  className="w-full rounded-xl border border-brand-line px-3 py-2"
+                  name="openingBalance"
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={formData.openingBalance}
+                  onChange={handleInputChange}
+                />
+              </label>
+              <label className="block space-y-1 text-sm text-brand-text">
+                <span className="font-medium">Opening Balance As Of</span>
+                <input
+                  className="w-full rounded-xl border border-brand-line px-3 py-2"
+                  name="openingBalanceAsOf"
+                  type="date"
+                  value={formData.openingBalanceAsOf}
+                  onChange={handleInputChange}
+                />
+              </label>
+              <label className="block space-y-1 text-sm text-brand-text">
+                <span className="font-medium">Monthly Contribution</span>
+                <input
+                  className="w-full rounded-xl border border-brand-line px-3 py-2"
+                  name="monthlyContribution"
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={formData.monthlyContribution}
+                  onChange={handleInputChange}
+                />
+              </label>
+              <label className="block space-y-1 text-sm text-brand-text">
+                <span className="font-medium">Annual Interest Rate (%)</span>
+                <input
+                  className="w-full rounded-xl border border-brand-line px-3 py-2"
+                  name="annualInterestRatePct"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.annualInterestRatePct}
+                  onChange={handleInputChange}
+                />
+              </label>
               <label className="flex items-center gap-2 text-sm text-brand-text">
                 <input name="isActive" type="checkbox" checked={formData.isActive} onChange={handleInputChange} />
                 Active
