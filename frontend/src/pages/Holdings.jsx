@@ -112,7 +112,10 @@ function HoldingsPage() {
       const matchesBroker = brokerFilter === "all" || holdingBroker === brokerFilter.toLowerCase();
       const matchesInstrumentType = instrumentTypeFilter === "all"
         || holdingInstrumentType === instrumentTypeFilter.toLowerCase();
-      const matchesGoal = linkedGoalFilter === "all" || holdingGoalId === linkedGoalFilter;
+      const matchesGoal = linkedGoalFilter === "all"
+        || (linkedGoalFilter === "linked" && holdingGoalId !== "unlinked")
+        || (linkedGoalFilter === "unlinked" && holdingGoalId === "unlinked")
+        || (linkedGoalFilter.startsWith("goal:") && holdingGoalId === linkedGoalFilter.replace("goal:", ""));
 
       return matchesBroker && matchesInstrumentType && matchesGoal;
     });
@@ -390,10 +393,11 @@ function HoldingsPage() {
             className="rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text focus:border-slate-400 focus:outline-none"
             aria-label="Filter holdings by linked goal"
           >
-            <option value="all">All Linked Goals</option>
-            <option value="unlinked">Unlinked</option>
+            <option value="all">ALL</option>
+            <option value="linked">Linked Goals</option>
+            <option value="unlinked">Unlinked Goals</option>
             {linkedGoalOptions.map((goal) => (
-              <option key={goal.id} value={goal.id}>
+              <option key={goal.id} value={`goal:${goal.id}`}>
                 {goal.name}
               </option>
             ))}
