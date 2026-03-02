@@ -9,6 +9,7 @@ function GoalDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [unlinkingHoldingId, setUnlinkingHoldingId] = useState("");
+  const [unlinkingFDId, setUnlinkingFDId] = useState("");
 
   const fetchDetail = useCallback(async () => {
     const response = await api.get(`/goals/${id}/detail`);
@@ -49,12 +50,28 @@ function GoalDetailPage() {
     }
   };
 
+  const handleUnlinkFixedDeposit = async (fdId) => {
+    setError("");
+    setUnlinkingFDId(fdId);
+
+    try {
+      await api.patch(`/fixed-deposits/${fdId}`, { goalId: null });
+      await fetchDetail();
+      refreshDashboard();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to unlink fixed deposit");
+    } finally {
+      setUnlinkingFDId("");
+    }
+  };
+
   const formatCurrency = (value, fractionDigits = 2) => `\u20B9${Number(value || 0).toLocaleString("en-IN", {
     maximumFractionDigits: fractionDigits
   })}`;
 
   const projection = detail?.projection || {};
   const linkedHoldings = detail?.linkedHoldings || [];
+  const linkedFixedDeposits = detail?.linkedFixedDeposits || [];
   const totalAllocated = Number(detail?.totalAllocated || 0);
   const allocationPercent = Number(detail?.allocationPercent || 0);
   const normalizedAllocationPercent = Number.isFinite(allocationPercent) ? allocationPercent : 0;
@@ -137,6 +154,10 @@ function GoalDetailPage() {
                 <p className="text-xs uppercase tracking-wide text-brand-muted">Linked Holdings</p>
                 <p className="mt-1 text-base font-semibold text-brand-text">{linkedHoldings.length}</p>
               </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-brand-muted">Linked FDs</p>
+                <p className="mt-1 text-base font-semibold text-brand-text">{linkedFixedDeposits.length}</p>
+              </div>
             </div>
           </div>
 
@@ -189,6 +210,56 @@ function GoalDetailPage() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
+            <div className="border-b border-brand-line px-5 py-4">
+              <h3 className="text-lg font-semibold tracking-tight text-brand-text">Allocated Fixed Deposits</h3>
+            </div>
+
+            {linkedFixedDeposits.length === 0 ? (
+              <div className="p-8 text-center text-sm text-brand-muted">
+                No fixed deposits are linked to this goal.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Bank</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">FD Name</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Principal</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Current Value</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Maturity Date</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Status</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brand-line">
+                    {linkedFixedDeposits.map((fd) => (
+                      <tr key={fd._id}>
+                        <td className="px-5 py-3 text-brand-text">{fd.bank}</td>
+                        <td className="px-5 py-3 text-brand-muted">{fd.fdName}</td>
+                        <td className="px-5 py-3 text-brand-muted">{formatCurrency(fd.principal)}</td>
+                        <td className="px-5 py-3 font-semibold text-brand-text">{formatCurrency(fd.cachedValue)}</td>
+                        <td className="px-5 py-3 text-brand-muted">{fd.maturityDate?.slice(0, 10)}</td>
+                        <td className="px-5 py-3 text-brand-muted capitalize">{fd.status}</td>
+                        <td className="px-5 py-3">
+                          <button
+                            type="button"
+                            onClick={() => handleUnlinkFixedDeposit(fd._id)}
+                            disabled={unlinkingFDId === fd._id}
+                            className="rounded-lg border border-brand-line px-3 py-1.5 text-xs font-semibold text-brand-text transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {unlinkingFDId === fd._id ? "Unlinking..." : "Unlink"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

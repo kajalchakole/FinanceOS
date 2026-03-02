@@ -6,6 +6,7 @@ import AppLayout from "./layout/AppLayout";
 import AddHoldingPage from "./pages/AddHolding";
 import CreateGoalPage from "./pages/CreateGoal";
 import DashboardPage from "./pages/Dashboard";
+import FixedDepositsPage from "./pages/FixedDeposits";
 import GoalDetailPage from "./pages/GoalDetail";
 import GoalsPage from "./pages/Goals";
 import HoldingsPage from "./pages/Holdings";
@@ -27,6 +28,7 @@ function App() {
           <Route path="/holdings/new" element={<AddHoldingPage />} />
           <Route path="/holdings/:id/edit" element={<AddHoldingPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/fixed-deposits" element={<FixedDepositsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>
