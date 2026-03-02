@@ -1,9 +1,8 @@
-import Setting from "../settings/settings.model.js";
+import { shouldRecalculateByDays } from "../../services/refreshInterval.service.js";
+import Setting, { SETTINGS_DEFAULTS, SETTINGS_KEYS } from "../settings/settings.model.js";
 
 import EpfAccount from "./epf.model.js";
 
-const DEFAULT_EPF_REFRESH_INTERVAL_HOURS = 24 * 7;
-const EPF_REFRESH_INTERVAL_KEY = "epfRefreshIntervalHours";
 const MAX_MONTHS_FOR_EPF_CALC = 1200;
 
 const getDatePartsForKolkata = (date) => {
@@ -42,30 +41,15 @@ const getFullMonthsBetween = (fromDate, toDate) => {
   return Math.min(months, MAX_MONTHS_FOR_EPF_CALC);
 };
 
-export const shouldRecalculate = (cachedAt, intervalHours) => {
-  if (!cachedAt) {
-    return true;
-  }
-
-  const parsedInterval = Number(intervalHours);
-  const effectiveInterval = Number.isFinite(parsedInterval) && parsedInterval > 0
-    ? parsedInterval
-    : DEFAULT_EPF_REFRESH_INTERVAL_HOURS;
-
-  const ageMs = Date.now() - new Date(cachedAt).getTime();
-
-  return ageMs >= effectiveInterval * 60 * 60 * 1000;
-};
-
-export const getEpfRefreshIntervalHours = async () => {
-  const setting = await Setting.findOne({ key: EPF_REFRESH_INTERVAL_KEY }).lean();
+export const getEpfRefreshIntervalDays = async () => {
+  const setting = await Setting.findOne({ key: SETTINGS_KEYS.epfRefreshIntervalDays }).lean();
   const parsedInterval = Number(setting?.value);
 
   if (Number.isFinite(parsedInterval) && parsedInterval > 0) {
     return parsedInterval;
   }
 
-  return DEFAULT_EPF_REFRESH_INTERVAL_HOURS;
+  return SETTINGS_DEFAULTS.epfRefreshIntervalDays;
 };
 
 export const computeEpfValue = (account, now = new Date()) => {
@@ -116,11 +100,11 @@ export const recalculateAndPersist = async (accountId, now = new Date()) => {
 };
 
 export const refreshStaleAccounts = async (accounts) => {
-  const intervalHours = await getEpfRefreshIntervalHours();
+  const intervalDays = await getEpfRefreshIntervalDays();
   const now = new Date();
 
   const refreshedAccounts = await Promise.all(accounts.map(async (account) => {
-    if (!shouldRecalculate(account.cachedAt, intervalHours)) {
+    if (!shouldRecalculateByDays(account.cachedAt, intervalDays || SETTINGS_DEFAULTS.epfRefreshIntervalDays)) {
       return {
         ...account.toObject(),
         isStale: false
@@ -137,5 +121,3 @@ export const refreshStaleAccounts = async (accounts) => {
 
   return refreshedAccounts;
 };
-
-export { DEFAULT_EPF_REFRESH_INTERVAL_HOURS, EPF_REFRESH_INTERVAL_KEY };

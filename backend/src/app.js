@@ -12,6 +12,7 @@ import portfolioRouter from "./modules/portfolio/portfolio.routes.js";
 import fixedDepositRouter from "./modules/fixedDeposits/fixedDeposit.routes.js";
 import epfRouter from "./modules/epf/epf.routes.js";
 import npsRouter from "./modules/nps/nps.routes.js";
+import ppfRouter from "./modules/ppf/ppf.routes.js";
 import settingsRouter from "./modules/settings/settings.routes.js";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 
@@ -32,6 +33,7 @@ app.use("/api/portfolio", portfolioRouter);
 app.use("/api/fixed-deposits", fixedDepositRouter);
 app.use("/api/epf", epfRouter);
 app.use("/api/nps", npsRouter);
+app.use("/api/ppf", ppfRouter);
 app.use("/api/settings", settingsRouter);
 
 app.use(notFoundHandler);

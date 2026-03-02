@@ -77,6 +77,7 @@ function GoalDetailPage() {
   const normalizedAllocationPercent = Number.isFinite(allocationPercent) ? allocationPercent : 0;
   const epfContribution = Number(detail?.epfContribution || 0);
   const npsContribution = Number(detail?.npsContribution || 0);
+  const ppfContribution = Number(detail?.ppfContribution || 0);
 
   const summaryItems = useMemo(() => ([
     {
@@ -170,6 +171,12 @@ function GoalDetailPage() {
                 <div>
                   <p className="text-xs uppercase tracking-wide text-brand-muted">NPS Contribution</p>
                   <p className="mt-1 text-base font-semibold text-brand-text">{formatCurrency(npsContribution)}</p>
+                </div>
+              ) : null}
+              {detail?.goal?.usePpf ? (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-brand-muted">PPF Contribution</p>
+                  <p className="mt-1 text-base font-semibold text-brand-text">{formatCurrency(ppfContribution)}</p>
                 </div>
               ) : null}
             </div>

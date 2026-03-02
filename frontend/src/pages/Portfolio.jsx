@@ -112,6 +112,10 @@ function PortfolioPage() {
       value: formatCurrency(summary?.totalNpsValue)
     },
     {
+      label: "PPF",
+      value: formatCurrency(summary?.totalPpfValue)
+    },
+    {
       label: "Unassigned Capital",
       value: formatPercent(summary?.unassignedPercent),
       helper: formatCurrency(summary?.unassignedValue)
