@@ -94,6 +94,7 @@ export const getGoals = async (req, res, next) => {
 
       return {
         ...goalData,
+        currentCorpus: corpus,
         projection: calculateProjection(goalData, corpus)
       };
     });

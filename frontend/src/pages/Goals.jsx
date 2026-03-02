@@ -1,8 +1,34 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import GoalCard from "../components/GoalCard";
 import api from "../services/api";
+
+const GOALS_VIEW_MODE_STORAGE_KEY = "goalsViewMode";
+
+const formatCurrency = (value) => `\u20B9${Number(value || 0).toLocaleString("en-IN", {
+  maximumFractionDigits: 0
+})}`;
+
+const getProjectionMeta = (projection = {}) => {
+  const isOnTrack = projection.status === "On Track";
+  const isGoalMet = projection.status === "Goal Met";
+  const isExpired = projection.status === "Expired";
+
+  const statusClassName = isExpired
+    ? "border-amber-200 bg-amber-50 text-amber-700"
+    : isGoalMet
+      ? "border-teal-200 bg-teal-50 text-teal-700"
+      : isOnTrack
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : "border-rose-200 bg-rose-50 text-rose-700";
+
+  return {
+    gapClassName: projection.gap >= 0 ? "text-emerald-600" : "text-rose-600",
+    statusClassName,
+    statusLabel: isExpired ? "Year Passed" : (projection.status || "At Risk")
+  };
+};
 
 function GoalsPage() {
   const [goals, setGoals] = useState([]);
@@ -11,6 +37,14 @@ function GoalsPage() {
   const [deletingGoalId, setDeletingGoalId] = useState("");
   const [goalPendingDelete, setGoalPendingDelete] = useState(null);
   const [deleteModalError, setDeleteModalError] = useState("");
+  const [sortConfig, setSortConfig] = useState({
+    key: "name",
+    direction: "asc"
+  });
+  const [viewMode, setViewMode] = useState(() => {
+    const storedValue = String(window.localStorage.getItem(GOALS_VIEW_MODE_STORAGE_KEY) || "").toLowerCase();
+    return storedValue === "grid" ? "grid" : "cards";
+  });
   const deleteModalRef = useRef(null);
 
   useEffect(() => {
@@ -135,6 +169,65 @@ function GoalsPage() {
     };
   }, [goalPendingDelete, deletingGoalId]);
 
+  useEffect(() => {
+    window.localStorage.setItem(GOALS_VIEW_MODE_STORAGE_KEY, viewMode);
+  }, [viewMode]);
+
+  const sortedGoals = useMemo(() => {
+    const sorted = [...goals];
+
+    sorted.sort((left, right) => {
+      const leftProjection = left.projection || {};
+      const rightProjection = right.projection || {};
+
+      const leftValueByKey = {
+        name: String(left.name || ""),
+        currentCorpus: Number(left.currentCorpus || 0),
+        targetYear: Number(left.targetYear || 0),
+        futureRequired: Number(leftProjection.futureRequired || 0),
+        projectedCorpus: Number(leftProjection.projectedCorpus || 0),
+        gap: Number(leftProjection.gap || 0),
+        status: String(leftProjection.status || "At Risk")
+      }[sortConfig.key];
+
+      const rightValueByKey = {
+        name: String(right.name || ""),
+        currentCorpus: Number(right.currentCorpus || 0),
+        targetYear: Number(right.targetYear || 0),
+        futureRequired: Number(rightProjection.futureRequired || 0),
+        projectedCorpus: Number(rightProjection.projectedCorpus || 0),
+        gap: Number(rightProjection.gap || 0),
+        status: String(rightProjection.status || "At Risk")
+      }[sortConfig.key];
+
+      if (typeof leftValueByKey === "string" || typeof rightValueByKey === "string") {
+        return String(leftValueByKey).localeCompare(String(rightValueByKey), undefined, { sensitivity: "base" });
+      }
+
+      return Number(leftValueByKey || 0) - Number(rightValueByKey || 0);
+    });
+
+    return sortConfig.direction === "asc" ? sorted : sorted.reverse();
+  }, [goals, sortConfig.direction, sortConfig.key]);
+
+  const handleSort = (key) => {
+    setSortConfig((current) => {
+      if (current.key === key) {
+        return {
+          key,
+          direction: current.direction === "asc" ? "desc" : "asc"
+        };
+      }
+
+      return {
+        key,
+        direction: "asc"
+      };
+    });
+  };
+
+  const getSortIndicator = (key) => (sortConfig.key === key ? (sortConfig.direction === "asc" ? " ▲" : " ▼") : "");
+
   return (
     <section className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -143,12 +236,37 @@ function GoalsPage() {
           <p className="mt-1 text-sm text-brand-muted">Manage your financial goals.</p>
         </div>
 
-        <Link
-          to="/goals/new"
-          className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          New Goal
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center rounded-xl border border-brand-line bg-white p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              aria-pressed={viewMode === "cards"}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                viewMode === "cards" ? "bg-slate-900 text-white" : "text-brand-muted hover:bg-slate-50"
+              }`}
+            >
+              Cards
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              aria-pressed={viewMode === "grid"}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                viewMode === "grid" ? "bg-slate-900 text-white" : "text-brand-muted hover:bg-slate-50"
+              }`}
+            >
+              Grid
+            </button>
+          </div>
+
+          <Link
+            to="/goals/new"
+            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            New Goal
+          </Link>
+        </div>
       </div>
 
       {isLoading ? <p className="text-sm text-brand-muted">Loading goals...</p> : null}
@@ -159,9 +277,9 @@ function GoalsPage() {
         </div>
       ) : null}
 
-      {!isLoading && !error && goals.length > 0 ? (
+      {!isLoading && !error && goals.length > 0 && viewMode === "cards" ? (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {goals.map((goal) => (
+          {sortedGoals.map((goal) => (
             <GoalCard
               key={goal._id}
               goal={goal}
@@ -169,6 +287,92 @@ function GoalsPage() {
               isDeleting={deletingGoalId === goal._id}
             />
           ))}
+        </div>
+      ) : null}
+
+      {!isLoading && !error && goals.length > 0 && viewMode === "grid" ? (
+        <div className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("name")} className="font-semibold">Goal{getSortIndicator("name")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("currentCorpus")} className="font-semibold">Current Accumulated Corpus{getSortIndicator("currentCorpus")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("targetYear")} className="font-semibold">Target Year{getSortIndicator("targetYear")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("futureRequired")} className="font-semibold">Future Required{getSortIndicator("futureRequired")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("projectedCorpus")} className="font-semibold">Projected Corpus{getSortIndicator("projectedCorpus")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("gap")} className="font-semibold">Gap{getSortIndicator("gap")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <button type="button" onClick={() => handleSort("status")} className="font-semibold">Status{getSortIndicator("status")}</button>
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand-line">
+                {sortedGoals.map((goal) => {
+                  const projection = goal.projection || {};
+                  const { gapClassName, statusClassName, statusLabel } = getProjectionMeta(projection);
+
+                  return (
+                    <tr key={goal._id}>
+                      <td className="px-5 py-3 text-brand-text">
+                        <Link to={`/goals/${goal._id}`} className="font-medium transition hover:text-slate-700">
+                          {goal.name}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3 text-brand-muted">{formatCurrency(goal.currentCorpus)}</td>
+                      <td className="px-5 py-3 text-brand-muted">{goal.targetYear}</td>
+                      <td className="px-5 py-3 text-brand-muted">{formatCurrency(projection.futureRequired)}</td>
+                      <td className="px-5 py-3 text-brand-muted">{formatCurrency(projection.projectedCorpus)}</td>
+                      <td className={`px-5 py-3 font-semibold ${gapClassName}`}>{formatCurrency(projection.gap)}</td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${statusClassName}`}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/goals/${goal._id}/edit`}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-line bg-slate-50 text-brand-muted transition hover:bg-slate-100"
+                            aria-label="Edit goal"
+                            title="Edit goal"
+                          >
+                            <i className="bi bi-pencil text-xs leading-none" aria-hidden="true" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGoal(goal)}
+                            disabled={deletingGoalId === goal._id}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label={deletingGoalId === goal._id ? "Deleting goal" : "Delete goal"}
+                            title={deletingGoalId === goal._id ? "Deleting..." : "Delete goal"}
+                          >
+                            <i
+                              className={`bi ${deletingGoalId === goal._id ? "bi-hourglass-split" : "bi-trash"} text-xs leading-none`}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 
