@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import ConfirmationModal from "../components/ConfirmationModal";
 import api from "../services/api";
 
-const DEFAULT_REFRESH_INTERVAL_MS = 1000;
+const DEFAULT_REFRESH_INTERVAL_MS = 60000;
 const resolveRefreshIntervalMs = () => {
   const parsed = Number(import.meta.env.VITE_HOLDINGS_REFRESH_MS || DEFAULT_REFRESH_INTERVAL_MS);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_REFRESH_INTERVAL_MS;
@@ -34,7 +34,7 @@ function HoldingsPage() {
 
   const fetchPageData = async () => {
     const [holdingsResponse, goalsResponse] = await Promise.all([
-      api.get("/holdings", { params: { livePrices: "true" } }),
+      api.get("/holdings"),
       api.get("/goals")
     ]);
 
@@ -42,10 +42,19 @@ function HoldingsPage() {
     setGoals(goalsResponse.data || []);
   };
 
+  const refreshLivePrices = async () => {
+    const holdingsResponse = await api.get("/holdings", { params: { livePrices: "true" } });
+    setHoldings(holdingsResponse.data || []);
+  };
+
   useEffect(() => {
     const loadPage = async () => {
       try {
         await fetchPageData();
+        // Keep initial render fast; update to latest prices after holdings are already visible.
+        void refreshLivePrices().catch(() => {
+          // Ignore live price fetch failures on initial background refresh.
+        });
       } catch (requestError) {
         setError(requestError.response?.data?.message || "Unable to load holdings");
       } finally {
@@ -60,8 +69,7 @@ function HoldingsPage() {
     const refreshIntervalMs = resolveRefreshIntervalMs();
     const intervalId = window.setInterval(async () => {
       try {
-        const holdingsResponse = await api.get("/holdings", { params: { livePrices: "true" } });
-        setHoldings(holdingsResponse.data || []);
+        await refreshLivePrices();
       } catch (requestError) {
         // Keep existing data on intermittent quote-source failures.
       }
