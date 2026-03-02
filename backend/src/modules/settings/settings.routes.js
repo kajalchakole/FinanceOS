@@ -1,10 +1,11 @@
 import { Router } from "express";
 
-import { getSettings, updateFDInterval } from "./settings.controller.js";
+import { getSettings, updateEPFInterval, updateFDInterval } from "./settings.controller.js";
 
 const settingsRouter = Router();
 
 settingsRouter.get("/", getSettings);
 settingsRouter.patch("/fd-interval", updateFDInterval);
+settingsRouter.patch("/epf-interval", updateEPFInterval);
 
 export default settingsRouter;
