@@ -3,6 +3,7 @@ import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import EpfAccount from "../epf/epf.model.js";
 import NpsAccount from "../nps/nps.model.js";
 import PpfAccount from "../ppf/ppf.model.js";
+import PhysicalCommodity from "../physicalCommodities/physicalCommodity.model.js";
 import Goal from "../goals/goal.model.js";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 
@@ -38,7 +39,7 @@ const buildGroupedAllocation = (holdings, keySelector, netWorth) => {
 export const getPortfolioSummary = async () => {
   const holdings = await Holding.find().lean();
 
-  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf] = await Promise.all([
+  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf] = await Promise.all([
     FixedDeposit.aggregate([
       {
         $match: {
@@ -105,6 +106,41 @@ export const getPortfolioSummary = async () => {
         }
       }
     ]),
+    PhysicalCommodity.aggregate([
+      {
+        $match: {
+          isActive: true
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $multiply: ["$quantity", "$currentPricePerUnit"]
+            }
+          }
+        }
+      }
+    ]),
+    PhysicalCommodity.aggregate([
+      {
+        $match: {
+          isActive: true,
+          $or: [{ goalId: null }, { goalId: { $exists: false } }]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $multiply: ["$quantity", "$currentPricePerUnit"]
+            }
+          }
+        }
+      }
+    ]),
     Goal.findOne({ useEpf: true }, { _id: 1 }).lean(),
     Goal.findOne({ useNps: true }, { _id: 1 }).lean(),
     Goal.findOne({ usePpf: true }, { _id: 1 }).lean()
@@ -115,6 +151,8 @@ export const getPortfolioSummary = async () => {
   const totalEpfValue = epfAggregation.length > 0 ? Number(epfAggregation[0].total || 0) : 0;
   const totalNpsValue = npsAggregation.length > 0 ? Number(npsAggregation[0].total || 0) : 0;
   const totalPpfValue = ppfAggregation.length > 0 ? Number(ppfAggregation[0].total || 0) : 0;
+  const totalCommodityValue = commodityAggregation.length > 0 ? Number(commodityAggregation[0].total || 0) : 0;
+  const unlinkedCommodityValue = unlinkedCommodityAggregation.length > 0 ? Number(unlinkedCommodityAggregation[0].total || 0) : 0;
   const unlinkedEpfValue = goalUsingEpf ? 0 : totalEpfValue;
   const unlinkedNpsValue = goalUsingNps ? 0 : totalNpsValue;
   const unlinkedPpfValue = goalUsingPpf ? 0 : totalPpfValue;
@@ -126,7 +164,7 @@ export const getPortfolioSummary = async () => {
   }));
 
   const totalMarketValue = holdingsWithValue.reduce((sum, holding) => sum + holding.value, 0);
-  const netWorth = totalMarketValue + totalFDValue + totalEpfValue + totalNpsValue + totalPpfValue;
+  const netWorth = totalMarketValue + totalFDValue + totalEpfValue + totalNpsValue + totalPpfValue + totalCommodityValue;
   const totalInvested = holdingsWithValue.reduce((sum, holding) => sum + holding.investedValue, 0);
   const totalProfit = netWorth - totalInvested;
   const totalHoldings = holdingsWithValue.length;
@@ -144,13 +182,14 @@ export const getPortfolioSummary = async () => {
     fixedDeposits: totalFDValue,
     epf: totalEpfValue,
     nps: totalNpsValue,
-    ppf: totalPpfValue
+    ppf: totalPpfValue,
+    physicalCommodity: totalCommodityValue
   };
 
   const unassignedHoldingsValue = holdingsWithValue
     .filter((holding) => !holding.goalId)
     .reduce((sum, holding) => sum + holding.value, 0);
-  const unassignedValue = unassignedHoldingsValue + unlinkedFDValue + unlinkedEpfValue + unlinkedNpsValue + unlinkedPpfValue;
+  const unassignedValue = unassignedHoldingsValue + unlinkedFDValue + unlinkedEpfValue + unlinkedNpsValue + unlinkedPpfValue + unlinkedCommodityValue;
 
   const allocationByBroker = buildGroupedAllocation(
     holdingsWithValue,
@@ -199,7 +238,15 @@ export const getPortfolioSummary = async () => {
     });
   }
 
-  if (totalFDValue > 0 || totalEpfValue > 0 || totalNpsValue > 0 || totalPpfValue > 0) {
+  if (totalCommodityValue > 0) {
+    allocationByInstrumentType.push({
+      name: "Physical Commodity",
+      value: totalCommodityValue,
+      percentOfNetWorth: getPercentage(totalCommodityValue, netWorth)
+    });
+  }
+
+  if (totalFDValue > 0 || totalEpfValue > 0 || totalNpsValue > 0 || totalPpfValue > 0 || totalCommodityValue > 0) {
     allocationByInstrumentType.sort((a, b) => b.value - a.value);
   }
 
@@ -229,6 +276,7 @@ export const getPortfolioSummary = async () => {
     totalEpfValue,
     totalNpsValue,
     totalPpfValue,
+    totalCommodityValue,
     allocation,
     totalInvested,
     totalProfit,

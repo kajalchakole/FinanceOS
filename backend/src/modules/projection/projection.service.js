@@ -5,6 +5,7 @@ import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import EpfAccount from "../epf/epf.model.js";
 import NpsAccount from "../nps/nps.model.js";
 import PpfAccount from "../ppf/ppf.model.js";
+import PhysicalCommodity from "../physicalCommodities/physicalCommodity.model.js";
 import Goal from "../goals/goal.model.js";
 const activeEpfAccountFilter = {
   $or: [{ isActive: true }, { isActive: { $exists: false } }]
@@ -125,8 +126,28 @@ export const getCorpusByGoalIds = async (goalIds = []) => {
       }
     }
   ]);
+  const commodityCorpusRows = await PhysicalCommodity.aggregate([
+    {
+      $match: {
+        goalId: {
+          $in: validGoalIds
+        },
+        isActive: true
+      }
+    },
+    {
+      $group: {
+        _id: "$goalId",
+        corpus: {
+          $sum: {
+            $multiply: ["$quantity", "$currentPricePerUnit"]
+          }
+        }
+      }
+    }
+  ]);
 
-  const corpusByGoalId = [...holdingCorpusRows, ...fdCorpusRows].reduce((accumulator, row) => {
+  const corpusByGoalId = [...holdingCorpusRows, ...fdCorpusRows, ...commodityCorpusRows].reduce((accumulator, row) => {
     const goalId = row._id.toString();
     accumulator[goalId] = Number(accumulator[goalId] || 0) + Number(row.corpus || 0);
     return accumulator;

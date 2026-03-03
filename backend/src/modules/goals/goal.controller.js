@@ -4,6 +4,7 @@ import FixedDeposit from "../fixedDeposits/fixedDeposit.model.js";
 import EpfAccount from "../epf/epf.model.js";
 import NpsAccount from "../nps/nps.model.js";
 import PpfAccount from "../ppf/ppf.model.js";
+import PhysicalCommodity from "../physicalCommodities/physicalCommodity.model.js";
 import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 
 const notFoundError = (message) => {
@@ -128,12 +129,16 @@ export const getGoalDetail = async (req, res, next) => {
     }
 
     const goalData = goal.toObject();
-    const [linkedHoldings, linkedFixedDeposits, epfAccounts, npsAccounts, ppfAccounts] = await Promise.all([
+    const [linkedHoldings, linkedFixedDeposits, linkedPhysicalCommodities, epfAccounts, npsAccounts, ppfAccounts] = await Promise.all([
       Holding.find({ goalId: goal._id }).sort({ createdAt: -1 }),
       FixedDeposit.find({
         goalId: goal._id,
         status: { $in: ["active", "matured"] }
       }).sort({ maturityDate: 1 }),
+      PhysicalCommodity.find({
+        goalId: goal._id,
+        isActive: true
+      }).sort({ createdAt: -1 }),
       goal.useEpf ? EpfAccount.find(activeEpfAccountFilter) : Promise.resolve([]),
       goal.useNps ? NpsAccount.find(activeNpsAccountFilter) : Promise.resolve([]),
       goal.usePpf ? PpfAccount.find(activePpfAccountFilter) : Promise.resolve([])
@@ -146,6 +151,10 @@ export const getGoalDetail = async (req, res, next) => {
       (sum, fd) => sum + Number(fd.cachedValue || 0),
       0
     );
+    const commodityContribution = linkedPhysicalCommodities.reduce(
+      (sum, commodity) => sum + (Number(commodity.quantity || 0) * Number(commodity.currentPricePerUnit || 0)),
+      0
+    );
     const epfContribution = goal.useEpf
       ? epfAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0)
       : 0;
@@ -155,7 +164,7 @@ export const getGoalDetail = async (req, res, next) => {
     const ppfContribution = goal.usePpf
       ? ppfAccounts.reduce((sum, account) => sum + Number(account.cachedValue || 0), 0)
       : 0;
-    const totalAllocated = holdingsAllocated + fixedDepositsAllocated;
+    const totalAllocated = holdingsAllocated + fixedDepositsAllocated + commodityContribution;
     const projection = calculateProjection(goalData, totalAllocated + epfContribution + npsContribution + ppfContribution);
 
     const futureRequired = Number(projection.futureRequired || 0);
@@ -168,8 +177,10 @@ export const getGoalDetail = async (req, res, next) => {
       projection,
       linkedHoldings,
       linkedFixedDeposits,
+      linkedPhysicalCommodities,
       totalAllocated,
       allocationPercent,
+      commodityContribution,
       epfContribution,
       npsContribution,
       ppfContribution
