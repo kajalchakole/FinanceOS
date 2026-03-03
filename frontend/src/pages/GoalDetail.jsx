@@ -78,6 +78,7 @@ function GoalDetailPage() {
   const epfContribution = Number(detail?.epfContribution || 0);
   const npsContribution = Number(detail?.npsContribution || 0);
   const ppfContribution = Number(detail?.ppfContribution || 0);
+  const commodityContribution = Number(detail?.commodityContribution || 0);
 
   const summaryItems = useMemo(() => ([
     {
@@ -161,6 +162,12 @@ function GoalDetailPage() {
                 <p className="text-xs uppercase tracking-wide text-brand-muted">Linked FDs</p>
                 <p className="mt-1 text-base font-semibold text-brand-text">{linkedFixedDeposits.length}</p>
               </div>
+              {commodityContribution > 0 ? (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-brand-muted">Physical Commodity</p>
+                  <p className="mt-1 text-base font-semibold text-brand-text">{formatCurrency(commodityContribution)}</p>
+                </div>
+              ) : null}
               {detail?.goal?.useEpf ? (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-brand-muted">EPF Contribution</p>

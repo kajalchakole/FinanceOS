@@ -10,6 +10,7 @@ const links = [
   { label: "EPF", to: "/epf" },
   { label: "NPS", to: "/nps" },
   { label: "PPF", to: "/ppf" },
+  { label: "Physical Commodity", to: "/physical-commodities" },
   { label: "Settings", to: "/settings" }
 ];
 
