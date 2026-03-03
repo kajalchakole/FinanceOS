@@ -34,6 +34,7 @@ function SettingsPage() {
   const [savingRestore, setSavingRestore] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [restoreError, setRestoreError] = useState("");
 
   const restoreAllowed = useMemo(
     () => restoreConfirmInput.trim() === "CONFIRM" && restoreFile && restorePassword,
@@ -285,7 +286,7 @@ function SettingsPage() {
 
   const handleRestore = async () => {
     if (!restoreAllowed) {
-      setError("Select file, enter password, and type CONFIRM to proceed.");
+      setRestoreError("Select file, enter password, and type CONFIRM to proceed.");
       return;
     }
 
@@ -295,18 +296,19 @@ function SettingsPage() {
     formData.append("confirm", "true");
 
     setSavingRestore(true);
-    setError("");
+    setRestoreError("");
     try {
       await backupApi.restore(formData);
       setRestorePassword("");
       setRestoreConfirmInput("");
       setRestoreFile(null);
+      setRestoreError("");
       setShowRestoreModal(false);
       withSuccess("Restore completed successfully");
       navigate("/dashboard", { replace: true });
       window.location.reload();
     } catch (requestError) {
-      setError(requestError.response?.data?.message || "Unable to restore backup");
+      setRestoreError(requestError.response?.data?.message || "Unable to restore backup");
     } finally {
       setSavingRestore(false);
     }
@@ -387,7 +389,7 @@ function SettingsPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <button type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={() => setShowManualBackupModal(true)}>Backup Now</button>
               <button type="button" className="rounded-xl border border-brand-line px-4 py-2 text-sm font-semibold text-brand-text" onClick={handleDownloadLatest}>Download Latest Backup</button>
-              <button type="button" className="rounded-xl border border-rose-500 px-4 py-2 text-sm font-semibold text-rose-600" onClick={() => setShowRestoreModal(true)}>Restore From File</button>
+              <button type="button" className="rounded-xl border border-rose-500 px-4 py-2 text-sm font-semibold text-rose-600" onClick={() => { setRestoreError(""); setShowRestoreModal(true); }}>Restore From File</button>
             </div>
 
             {latestBackup ? <p className="mt-3 text-xs text-brand-muted">Latest backup: {latestBackup.filename} ({new Date(latestBackup.createdAt).toLocaleString()})</p> : <p className="mt-3 text-xs text-brand-muted">No backup found yet.</p>}
@@ -421,8 +423,9 @@ function SettingsPage() {
             <input className="mt-3 w-full rounded-xl border border-brand-line bg-brand-bg px-3 py-2 text-sm text-brand-text" type="password" value={restorePassword} onChange={(event) => setRestorePassword(event.target.value)} placeholder="Backup password" />
             <label className="mt-3 block text-sm text-brand-text">Type <strong>CONFIRM</strong> to continue</label>
             <input className="mt-2 w-full rounded-xl border border-brand-line bg-brand-bg px-3 py-2 text-sm text-brand-text" value={restoreConfirmInput} onChange={(event) => setRestoreConfirmInput(event.target.value)} placeholder="CONFIRM" />
+            {restoreError ? <p className="mt-3 text-sm text-rose-600">{restoreError}</p> : null}
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" className="rounded-xl border border-brand-line px-4 py-2 text-sm" onClick={() => { setShowRestoreModal(false); setRestorePassword(""); setRestoreConfirmInput(""); setRestoreFile(null); }}>Cancel</button>
+              <button type="button" className="rounded-xl border border-brand-line px-4 py-2 text-sm" onClick={() => { setShowRestoreModal(false); setRestorePassword(""); setRestoreConfirmInput(""); setRestoreFile(null); setRestoreError(""); }}>Cancel</button>
               <button type="button" className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" disabled={!restoreAllowed || savingRestore} onClick={handleRestore}>{savingRestore ? "Restoring..." : "Restore"}</button>
             </div>
           </div>
