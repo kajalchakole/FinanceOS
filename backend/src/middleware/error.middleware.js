@@ -32,6 +32,13 @@ export const errorHandler = (err, req, res, next) => {
     message = "Invalid resource id";
   }
 
+
+  if (err.name === "MulterError") {
+    statusCode = 400;
+    if (err.code === "LIMIT_FILE_SIZE") {
+      message = "Backup file too large. Maximum upload size is 25MB";
+    }
+  }
   responsePayload.message = message;
 
   if (typeof err.code === "string") {

@@ -192,7 +192,10 @@ export const getPortfolioSummary = async () => {
       .filter((holding) => (holding.instrumentType || "").toLowerCase() === "equity")
       .reduce((sum, holding) => sum + holding.value, 0),
     mutualFunds: holdingsWithValue
-      .filter((holding) => (holding.instrumentType || "").toLowerCase() === "mutual fund")
+      .filter((holding) => {
+        const type = (holding.instrumentType || "").toLowerCase();
+        return type === "mutual fund" || type === "mf";
+      })
       .reduce((sum, holding) => sum + holding.value, 0),
     etf: holdingsWithValue
       .filter((holding) => (holding.instrumentType || "").toLowerCase() === "etf")
