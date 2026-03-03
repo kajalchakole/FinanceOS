@@ -6,6 +6,7 @@ import { brokerSyncFailedError } from "./broker.errors.js";
 import { brokerRegistry, getBrokerDisplayName } from "./broker.registry.js";
 import { importGrowwHoldings } from "./groww_import/growwImport.service.js";
 import { importINDMoneyHoldings } from "./indmoney_import/indmoneyImport.service.js";
+import { importIciciMfHoldings } from "./icici_mf_import/iciciMfImport.service.js";
 
 const supportedBrokers = Object.keys(brokerRegistry);
 
@@ -27,24 +28,28 @@ export const getBrokers = async (req, res, next) => {
       hdfcAuth,
       growwSyncState,
       indmoneySyncState,
+      iciciMfSyncState,
       kiteHoldingsCount,
       breezeHoldingsCount,
       hdfcHoldingsCount,
       manualHoldingsCount,
       growwHoldingsCount,
-      indmoneyHoldingsCount
+      indmoneyHoldingsCount,
+      iciciMfHoldingsCount
     ] = await Promise.all([
       BrokerAuth.findOne({ broker: "kite" }),
       BrokerAuth.findOne({ broker: "breeze" }),
       BrokerAuth.findOne({ broker: "hdfc_investright" }),
       BrokerSyncState.findOne({ broker: "groww" }),
       BrokerSyncState.findOne({ broker: "indmoney" }),
+      BrokerSyncState.findOne({ broker: "icici_mf" }),
       Holding.countDocuments({ broker: { $in: ["kite", "Zerodha"] } }),
       Holding.countDocuments({ broker: "breeze" }),
       Holding.countDocuments({ broker: "hdfc_investright" }),
       Holding.countDocuments({ broker: "manual" }),
       Holding.countDocuments({ broker: "groww" }),
-      Holding.countDocuments({ broker: "indmoney" })
+      Holding.countDocuments({ broker: "indmoney" }),
+      Holding.countDocuments({ broker: "icici_mf" })
     ]);
 
     const brokers = supportedBrokers.map((brokerName) => {
@@ -98,6 +103,16 @@ export const getBrokers = async (req, res, next) => {
         };
       }
 
+      if (brokerName === "icici_mf") {
+        return {
+          name: "icici_mf",
+          displayName: getBrokerDisplayName("icici_mf"),
+          connected: true,
+          lastSyncAt: iciciMfSyncState?.lastSyncAt || null,
+          holdingsCount: iciciMfHoldingsCount
+        };
+      }
+
       return {
         name: "manual",
         displayName: getBrokerDisplayName("manual"),
@@ -125,6 +140,12 @@ export const importBrokerHoldings = async (req, res, next) => {
 
     if (brokerName === "indmoney") {
       const result = await importINDMoneyHoldings(req.files || []);
+      res.status(200).json(result);
+      return;
+    }
+
+    if (brokerName === "icici_mf") {
+      const result = await importIciciMfHoldings(req.files || []);
       res.status(200).json(result);
       return;
     }

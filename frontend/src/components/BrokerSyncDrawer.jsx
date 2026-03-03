@@ -58,6 +58,10 @@ function BrokerSyncDrawer({
     window.location.href = getConnectUrl(brokerName);
   };
 
+  const isFileImportBroker = (brokerName) => (
+    brokerName === "groww" || brokerName === "indmoney" || brokerName === "icici_mf"
+  );
+
   const handleSyncAction = async (broker) => {
     setUiState(broker.name, { mode: "syncing", message: "" });
 
@@ -117,9 +121,7 @@ function BrokerSyncDrawer({
       });
 
       setUiState(broker.name, { mode: "idle", message: "" });
-      const successMessage = broker.name === "indmoney"
-        ? "INDMoney holdings imported"
-        : `${broker.displayName || broker.name} holdings imported (${response.data?.importedCount || 0} holdings)`;
+      const successMessage = `${broker.displayName || broker.name} import successful (${response.data?.importedCount || 0} holdings)`;
       await onSyncSuccess(successMessage);
       await onRefreshBrokers();
       onClose();
@@ -193,8 +195,9 @@ function BrokerSyncDrawer({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {broker.name === "groww" || broker.name === "indmoney" ? (
+                    {isFileImportBroker(broker.name) ? (
                       <>
+                        <p className="text-[11px] font-medium text-brand-muted">Import via File</p>
                         <input
                           ref={(node) => {
                             fileInputRefs.current[broker.name] = node;
@@ -214,7 +217,7 @@ function BrokerSyncDrawer({
                           onClick={() => fileInputRefs.current[broker.name]?.click()}
                           className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {brokerState.mode === "syncing" ? "Importing..." : "Import File"}
+                          {brokerState.mode === "syncing" ? "Importing..." : broker.name === "icici_mf" ? "Upload Holdings" : "Import File"}
                         </button>
                       </>
                     ) : shouldShowConnectOnly ? (
