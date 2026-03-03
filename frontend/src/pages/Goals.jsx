@@ -340,7 +340,7 @@ function GoalsPage() {
       ) : null}
 
       {!isLoading && !error && goals.length > 0 && viewMode === "cards" ? (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {cardGoals.map((goal) => (
             <GoalCard
               key={goal._id}

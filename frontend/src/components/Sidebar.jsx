@@ -15,9 +15,14 @@ const links = [
   { label: "Settings", to: "/settings" }
 ];
 
-function Sidebar() {
+function Sidebar({ sidebarOpen = false, onClose = () => {} }) {
   return (
-    <aside className="sticky top-0 hidden h-screen w-72 border-r border-gray-200 bg-white px-4 py-5 transition-colors duration-300 ease-out dark:border-[#1F2937] dark:bg-[#0F141A] lg:block">
+    <aside
+      className={[
+        "fixed inset-y-0 left-0 z-50 h-screen w-64 flex-shrink-0 border-r border-gray-200 bg-white px-4 py-5 transition-transform duration-300 ease-in-out dark:border-[#1F2937] dark:bg-[#0F141A] lg:relative lg:z-auto lg:translate-x-0",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      ].join(" ")}
+    >
       <p className="mb-5 px-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-[#6B7280]">Workspace</p>
 
       <nav className="space-y-1">
@@ -25,6 +30,7 @@ function Sidebar() {
           <NavLink
             key={link.to}
             to={link.to}
+            onClick={onClose}
             className={({ isActive }) =>
               [
                 "block rounded-md px-3 py-2.5 text-sm transition-all duration-200 ease-out",

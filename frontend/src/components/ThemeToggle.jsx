@@ -47,7 +47,7 @@ function ThemeToggle() {
       onClick={handleToggle}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-200 ease-out hover:bg-gray-100 dark:border-[#1F2937] dark:bg-[#161D26] dark:text-[#F3F4F6] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.02)] dark:hover:bg-[#1A222C]"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-200 ease-out hover:bg-gray-100 dark:border-[#1F2937] dark:bg-[#161D26] dark:text-[#F3F4F6] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.02)] dark:hover:bg-[#1A222C]"
     >
       {isDark ? (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

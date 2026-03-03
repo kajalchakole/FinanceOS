@@ -160,9 +160,9 @@ function DashboardPage() {
       {isLoading ? <p className="text-sm text-gray-600 dark:text-[#9CA3AF]">Loading dashboard...</p> : null}
       {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
 
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <article key={card.title} className="app-surface-card p-6 transition-all duration-200 ease-out hover:-translate-y-[2px]">
+          <article key={card.title} className="app-surface-card p-4 transition-all duration-200 ease-out hover:-translate-y-[2px] sm:p-6">
             <p className="text-sm text-gray-500 dark:text-[#9CA3AF]">{card.title}</p>
             <div className="mt-2 min-h-10">
               {card.renderValue || (

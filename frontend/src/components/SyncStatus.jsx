@@ -95,7 +95,7 @@ function SyncStatus() {
       <button
         type="button"
         onClick={() => setDrawerOpen(true)}
-        className="rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-600 transition-all duration-200 ease-out hover:bg-gray-200 dark:bg-[#161D26] dark:text-[#9CA3AF] dark:hover:bg-[#1A222C]"
+        className="inline-flex h-11 items-center rounded-full bg-gray-100 px-4 text-xs text-gray-600 transition-all duration-200 ease-out hover:bg-gray-200 dark:bg-[#161D26] dark:text-[#9CA3AF] dark:hover:bg-[#1A222C]"
       >
         Sync:
         {" "}
