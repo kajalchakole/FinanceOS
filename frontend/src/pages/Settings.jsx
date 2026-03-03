@@ -426,7 +426,7 @@ function SettingsPage() {
             {restoreError ? <p className="mt-3 text-sm text-rose-600">{restoreError}</p> : null}
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" className="rounded-xl border border-brand-line px-4 py-2 text-sm" onClick={() => { setShowRestoreModal(false); setRestorePassword(""); setRestoreConfirmInput(""); setRestoreFile(null); setRestoreError(""); }}>Cancel</button>
-              <button type="button" className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" disabled={!restoreAllowed || savingRestore} onClick={handleRestore}>{savingRestore ? "Restoring..." : "Restore"}</button>
+              <button type="button" className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:bg-rose-300 disabled:text-rose-100" disabled={!restoreAllowed || savingRestore} onClick={handleRestore}>{savingRestore ? "Restoring..." : "Restore"}</button>
             </div>
           </div>
         </div>
