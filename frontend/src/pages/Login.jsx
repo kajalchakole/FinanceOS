@@ -93,7 +93,7 @@ function LoginPage() {
           </button>
 
           <p className="text-sm text-brand-muted">
-            <Link to="/recover" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4">
+            <Link to="/recover" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 dark:text-indigo-300 dark:decoration-indigo-400/50">
               Forgot password + PIN? Use Recovery Key
             </Link>
           </p>

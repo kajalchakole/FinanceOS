@@ -2,16 +2,16 @@ import React from "react";
 
 const variantStyles = {
   hero: {
-    container: "rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft h-full",
-    label: "text-sm text-brand-muted",
-    value: "mt-3 text-3xl font-semibold tracking-tight text-brand-text",
-    helper: "mt-1 text-xs text-brand-muted"
+    container: "app-surface-card h-full p-6 transition-all duration-200 ease-out hover:-translate-y-[2px]",
+    label: "text-sm text-gray-500 dark:text-[#9CA3AF]",
+    value: "mt-2 text-2xl font-semibold text-gray-900 dark:text-[#F3F4F6]",
+    helper: "mt-1 text-xs text-gray-400 dark:text-[#6B7280]"
   },
   compact: {
-    container: "rounded-2xl border border-brand-line bg-slate-50 p-4 h-full",
-    label: "text-xs text-brand-muted",
-    value: "mt-2 text-xl font-medium tracking-tight text-brand-text",
-    helper: "mt-1 text-xs text-brand-muted"
+    container: "app-surface-card h-full p-6 transition-all duration-200 ease-out hover:-translate-y-[2px]",
+    label: "text-sm text-gray-500 dark:text-[#9CA3AF]",
+    value: "mt-2 text-2xl font-semibold text-gray-900 dark:text-[#F3F4F6]",
+    helper: "mt-1 text-xs text-gray-400 dark:text-[#6B7280]"
   }
 };
 

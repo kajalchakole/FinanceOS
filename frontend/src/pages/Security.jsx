@@ -48,7 +48,7 @@ function SecurityPage() {
 
       {!isLoading && !error ? (
         <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+          <table className="fo-table">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 font-semibold text-brand-text">Timestamp</th>
@@ -56,7 +56,7 @@ function SecurityPage() {
                 <th className="px-4 py-3 font-semibold text-brand-text">Metadata</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brand-line">
+            <tbody className="fo-table-body">
               {logs.map((log) => (
                 <tr key={log._id}>
                   <td className="px-4 py-3 text-brand-muted">{new Date(log.createdAt).toLocaleString()}</td>
@@ -78,3 +78,4 @@ function SecurityPage() {
 }
 
 export default SecurityPage;
+

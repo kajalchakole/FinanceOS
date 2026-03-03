@@ -196,14 +196,14 @@ function AuthPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-brand-text">New Recovery Key</h1>
           <p className="mt-2 text-sm text-brand-muted">Your old recovery key is invalid now. Save this new key before continuing.</p>
 
-          <div className="mt-5 rounded-xl border border-amber-400 bg-amber-100/40 p-4">
+          <div className="mt-5 rounded-xl border border-amber-400 bg-amber-100/40 p-4 dark:border-yellow-900/40 dark:bg-yellow-900/20">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-800">Save This Now</p>
-            <p className="mt-2 break-words rounded-md bg-white p-3 font-mono text-sm text-slate-900">{newRecoveryKey}</p>
+            <p className="mt-2 break-words rounded-md bg-white p-3 font-mono text-sm text-slate-900 dark:bg-[#161D26] dark:text-[#F3F4F6]">{newRecoveryKey}</p>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={handleCopyRecoveryKey}>Copy</button>
-            <button type="button" className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm font-semibold text-brand-text" onClick={handleDownloadRecoveryKey}>Download .txt</button>
+            <button type="button" className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm font-semibold text-brand-text dark:bg-[#161D26] dark:border-[#1F2937] dark:text-[#F3F4F6]" onClick={handleDownloadRecoveryKey}>Download .txt</button>
           </div>
 
           {copyMessage ? <p className="mt-2 text-sm text-brand-muted">{copyMessage}</p> : null}
@@ -259,7 +259,7 @@ function AuthPage() {
               {submitting ? "Unlocking..." : "Unlock"}
             </button>
 
-            <button type="button" className="text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4" onClick={() => { setError(""); setMode(MODE_PASSWORD); }}>
+            <button type="button" className="text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 dark:text-indigo-300 dark:decoration-indigo-400/50" onClick={() => { setError(""); setMode(MODE_PASSWORD); }}>
               Use password instead
             </button>
           </form>
@@ -291,10 +291,10 @@ function AuthPage() {
             </button>
 
             <div className="flex flex-col gap-2">
-              <button type="button" className="text-left text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4" onClick={() => { setError(""); setMode(MODE_PIN); }}>
+              <button type="button" className="text-left text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 dark:text-indigo-300 dark:decoration-indigo-400/50" onClick={() => { setError(""); setMode(MODE_PIN); }}>
                 Use PIN instead
               </button>
-              <button type="button" className="text-left text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4" onClick={() => { setError(""); setMode(MODE_RECOVERY); }}>
+              <button type="button" className="text-left text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 dark:text-indigo-300 dark:decoration-indigo-400/50" onClick={() => { setError(""); setMode(MODE_RECOVERY); }}>
                 Forgot password?
               </button>
             </div>
@@ -336,7 +336,7 @@ function AuthPage() {
               {submitting ? "Resetting..." : "Reset"}
             </button>
 
-            <button type="button" className="text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4" onClick={() => { setError(""); setMode(MODE_PASSWORD); }}>
+            <button type="button" className="text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 dark:text-indigo-300 dark:decoration-indigo-400/50" onClick={() => { setError(""); setMode(MODE_PASSWORD); }}>
               Back to password login
             </button>
           </form>

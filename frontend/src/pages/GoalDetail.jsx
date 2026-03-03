@@ -200,7 +200,7 @@ function GoalDetailPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+                <table className="fo-table">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="px-5 py-3 font-semibold text-brand-text">Instrument</th>
@@ -212,7 +212,7 @@ function GoalDetailPage() {
                       <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-brand-line">
+                  <tbody className="fo-table-body">
                     {linkedHoldings.map((holding) => {
                       const currentValue = Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
                       const holdingShare = totalAllocated > 0 ? (currentValue / totalAllocated) * 100 : 0;
@@ -255,7 +255,7 @@ function GoalDetailPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+                <table className="fo-table">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="px-5 py-3 font-semibold text-brand-text">Bank</th>
@@ -267,7 +267,7 @@ function GoalDetailPage() {
                       <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-brand-line">
+                  <tbody className="fo-table-body">
                     {linkedFixedDeposits.map((fd) => (
                       <tr key={fd._id}>
                         <td className="px-5 py-3 text-brand-text">{fd.bank}</td>
@@ -300,3 +300,4 @@ function GoalDetailPage() {
 }
 
 export default GoalDetailPage;
+

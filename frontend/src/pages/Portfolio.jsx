@@ -128,21 +128,21 @@ function PortfolioPage() {
   return (
     <section className="mx-auto max-w-7xl">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-brand-text">Portfolio Intelligence</h2>
-        <p className="mt-1 text-sm text-brand-muted">Allocation drilldown across brokers, types, and top positions.</p>
-        <p className="mt-2 text-xs text-brand-muted">{lastBackupText}</p>
+        <h2 className="text-2xl font-semibold text-gray-900">Portfolio Intelligence</h2>
+        <p className="mt-1 text-sm text-gray-500">Allocation drilldown across brokers, types, and top positions.</p>
+        <p className="mt-1 text-xs text-gray-400">{lastBackupText}</p>
       </div>
 
       {health ? (
         <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
           health.severity === "critical"
-            ? "border-rose-300 bg-rose-50 text-rose-700"
-            : "border-amber-300 bg-amber-50 text-amber-700"
+            ? "border-red-200 bg-red-50 text-red-700"
+            : "border-yellow-200 bg-yellow-50 text-yellow-700"
         }`}>
           <p>{health.severity === "critical" ? "Critical: " : "Warning: "}{health.message}</p>
           <button
             type="button"
-            className="mt-2 rounded-lg border border-current px-3 py-1 text-xs font-semibold"
+            className="mt-2 rounded-full border border-current px-3 py-1 text-xs font-semibold transition-all duration-200 ease-out hover:bg-white/60"
             onClick={() => navigate("/settings")}
           >
             Backup Now
@@ -170,9 +170,9 @@ function PortfolioPage() {
             </div>
           </div>
 
-          <div className="mt-8 border-t border-brand-line pt-3 text-sm text-brand-muted">
+          <div className="app-divider pt-3 text-sm text-gray-600">
             <span>Total Holdings: {Number(summary?.totalHoldings || 0).toLocaleString("en-IN")}</span>
-            <span className="mx-3 text-brand-line">|</span>
+            <span className="mx-3 text-gray-300">|</span>
             <span>Unassigned Capital: {formatPercent(summary?.unassignedPercent)}</span>
           </div>
 
@@ -182,7 +182,7 @@ function PortfolioPage() {
                 <h3 className="text-lg font-semibold tracking-tight text-brand-text">Allocation by Instrument Type</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+                <table className="fo-table">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="px-5 py-3 font-semibold text-brand-text"><button type="button" onClick={() => toggleSort(instrumentSort, setInstrumentSort, "name")} className="font-semibold">Type{sortIndicator(instrumentSort, "name")}</button></th>
@@ -190,7 +190,7 @@ function PortfolioPage() {
                       <th className="px-5 py-3 font-semibold text-brand-text"><button type="button" onClick={() => toggleSort(instrumentSort, setInstrumentSort, "percentOfNetWorth")} className="font-semibold">% of Net Worth{sortIndicator(instrumentSort, "percentOfNetWorth")}</button></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-brand-line">
+                  <tbody className="fo-table-body">
                     {sortedInstrumentRows.map((row) => (
                       <tr key={row.name}>
                         <td className="px-5 py-3 text-brand-text">{row.displayName || row.name}</td>
@@ -208,7 +208,7 @@ function PortfolioPage() {
                 <h3 className="text-lg font-semibold tracking-tight text-brand-text">Allocation by Broker</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+                <table className="fo-table">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="px-5 py-3 font-semibold text-brand-text"><button type="button" onClick={() => toggleSort(brokerSort, setBrokerSort, "name")} className="font-semibold">Broker{sortIndicator(brokerSort, "name")}</button></th>
@@ -216,7 +216,7 @@ function PortfolioPage() {
                       <th className="px-5 py-3 font-semibold text-brand-text"><button type="button" onClick={() => toggleSort(brokerSort, setBrokerSort, "percentOfNetWorth")} className="font-semibold">% of Net Worth{sortIndicator(brokerSort, "percentOfNetWorth")}</button></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-brand-line">
+                  <tbody className="fo-table-body">
                     {sortedBrokerRows.map((row) => (
                       <tr key={row.name}>
                         <td className="px-5 py-3 text-brand-text">{row.displayName || row.name}</td>
@@ -235,7 +235,7 @@ function PortfolioPage() {
               <h3 className="text-lg font-semibold tracking-tight text-brand-text">Top Assets</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+              <table className="fo-table">
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-5 py-3 font-semibold text-brand-text"><button type="button" onClick={() => toggleSort(topHoldingSort, setTopHoldingSort, "instrumentName")} className="font-semibold">Instrument{sortIndicator(topHoldingSort, "instrumentName")}</button></th>
@@ -251,7 +251,7 @@ function PortfolioPage() {
                     <th className="px-5 py-3 font-semibold text-brand-text"><button type="button" onClick={() => toggleSort(topHoldingSort, setTopHoldingSort, "percentOfNetWorth")} className="font-semibold">% of Net Worth{sortIndicator(topHoldingSort, "percentOfNetWorth")}</button></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-brand-line">
+                <tbody className="fo-table-body">
                   {sortedTopHoldings.map((holding) => {
                     const profitClassName = Number(holding.profit || 0) >= 0 ? "text-emerald-600" : "text-rose-600";
 
@@ -282,3 +282,4 @@ function PortfolioPage() {
 }
 
 export default PortfolioPage;
+
