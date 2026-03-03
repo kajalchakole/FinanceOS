@@ -4,8 +4,21 @@ const DEFAULT_API_BASE_URL = "http://localhost:5000/api";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 const api = axios.create({
-  baseURL: API_BASE_URL
+  baseURL: API_BASE_URL,
+  withCredentials: true
 });
+
+export const authApi = {
+  status: () => api.get("/auth/status"),
+  register: (payload) => api.post("/auth/register", payload),
+  loginPin: (payload) => api.post("/auth/login-pin", payload),
+  loginPassword: (payload) => api.post("/auth/login-password", payload),
+  login: (payload) => api.post("/auth/login-password", payload),
+  generateRecoveryKey: (payload = {}) => api.post("/auth/recovery-key/generate", payload),
+  recover: (payload) => api.post("/auth/recover", payload),
+  logout: () => api.post("/auth/logout"),
+  me: () => api.get("/auth/me")
+};
 
 export const settingsApi = {
   get: () => api.get("/settings"),

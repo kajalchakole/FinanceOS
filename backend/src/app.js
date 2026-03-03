@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 
 import healthRouter from "./routes/health.routes.js";
+import authRouter from "./modules/auth/auth.routes.js";
 import goalRouter from "./modules/goals/goal.routes.js";
 import dashboardRouter from "./modules/dashboard/dashboard.routes.js";
 import holdingRouter from "./modules/holdings/holding.routes.js";
@@ -16,16 +18,31 @@ import ppfRouter from "./modules/ppf/ppf.routes.js";
 import physicalCommodityRouter from "./modules/physicalCommodities/physicalCommodity.routes.js";
 import settingsRouter from "./modules/settings/settings.routes.js";
 import backupRouter from "./modules/backup/backup.routes.js";
+import { requireAuth } from "./middleware/requireAuth.js";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    const appBaseUrl = process.env.APP_BASE_URL;
+
+    if (!appBaseUrl || !origin || origin === appBaseUrl) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("CORS origin not allowed"));
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(morgan("dev"));
 
 app.use(healthRouter);
+app.use("/api/auth", authRouter);
+app.use("/api", requireAuth);
 app.use("/api/goals", goalRouter);
 app.use("/api/holdings", holdingRouter);
 app.use("/api/dashboard", dashboardRouter);
