@@ -21,12 +21,16 @@ export const calculateProjection = (goal, corpusBase = 0) => {
   const currentYear = new Date().getFullYear();
   const years = goal.targetYear - currentYear;
 
-  if (years <= 0) {
+  if (years < 0) {
+    const futureRequired = Number(goal.presentValue || 0);
+    const projectedCorpus = Number(corpusBase || 0);
+    const gap = projectedCorpus - futureRequired;
+
     return {
-      futureRequired: 0,
-      projectedCorpus: corpusBase,
-      gap: corpusBase,
-      status: "Expired",
+      futureRequired,
+      projectedCorpus,
+      gap,
+      status: projectedCorpus >= futureRequired ? "Goal Met" : "Expired",
       yearsRemaining: 0
     };
   }
