@@ -332,21 +332,39 @@ const hasAnyValueForKeys = (item, keys = []) => keys.some((key) => {
 
 const upsertByQuality = (rows) => {
   const map = new Map();
+  const sanitizeForKey = (value) => String(value || "").trim().toLowerCase();
+  const toBucketedNumber = (value) => {
+    const numericValue = toNumber(value);
+    return Number.isFinite(numericValue) ? numericValue.toFixed(6) : "0.000000";
+  };
 
   for (const row of rows) {
-    const sourceCodeKey = String(row.sourceStockCode || "").trim().toLowerCase();
+    const sourceCodeKey = sanitizeForKey(row.sourceStockCode);
+    const quantityKey = toBucketedNumber(row.quantity);
+    const averagePriceKey = toBucketedNumber(row.averagePrice);
+    const currentPriceKey = toBucketedNumber(row.currentPrice);
+    const accountKey = sanitizeForKey(row.brokerAccountId);
+    const folioKey = sanitizeForKey(row.folioNumber);
+    const nameKey = sanitizeForKey(row.instrumentName);
+    const typeKey = sanitizeForKey(row.instrumentType);
     const key = sourceCodeKey
       ? [
         sourceCodeKey,
-        String(row.instrumentType || "").toLowerCase(),
-        String(row.brokerAccountId || "").toLowerCase(),
-        String(row.folioNumber || "").toLowerCase()
+        typeKey,
+        accountKey,
+        folioKey,
+        quantityKey,
+        averagePriceKey,
+        currentPriceKey
       ].join("::")
       : [
-        String(row.instrumentName || "").toLowerCase(),
-        String(row.instrumentType || "").toLowerCase(),
-        String(row.brokerAccountId || "").toLowerCase(),
-        String(row.folioNumber || "").toLowerCase()
+        nameKey,
+        typeKey,
+        accountKey,
+        folioKey,
+        quantityKey,
+        averagePriceKey,
+        currentPriceKey
       ].join("::");
 
     const existing = map.get(key);
@@ -722,6 +740,87 @@ const buildCashHolding = (fundsResponse) => {
   };
 };
 
+const getQuoteRows = (response) => {
+  if (Array.isArray(response?.Success)) {
+    return response.Success;
+  }
+
+  if (Array.isArray(response?.success)) {
+    return response.success;
+  }
+
+  if (Array.isArray(response?.data)) {
+    return response.data;
+  }
+
+  if (response?.Success && typeof response.Success === "object") {
+    return [response.Success];
+  }
+
+  if (response?.success && typeof response.success === "object") {
+    return [response.success];
+  }
+
+  if (response && typeof response === "object") {
+    return [response];
+  }
+
+  return [];
+};
+
+const resolveQuotePriceFromResponse = (quoteResponse) => {
+  const rows = getQuoteRows(quoteResponse);
+
+  for (const row of rows) {
+    const price = pickFirstNumericValue(row, [
+      "ltp",
+      "last_price",
+      "lastPrice",
+      "current_market_price",
+      "currentMarketPrice",
+      "market_price",
+      "marketPrice",
+      "price",
+      "close",
+      "closing_price"
+    ]);
+
+    if (price > 0) {
+      return price;
+    }
+  }
+
+  return 0;
+};
+
+const resolveBreezeQuotePrice = async (breezeClient, stockCode) => {
+  const normalizedStockCode = String(stockCode || "").trim().toUpperCase();
+
+  if (!normalizedStockCode) {
+    return 0;
+  }
+
+  const exchangeCodes = ["NSE", "BSE"];
+
+  for (const exchangeCode of exchangeCodes) {
+    try {
+      const quoteResponse = await breezeClient.getQuotes({
+        stockCode: normalizedStockCode,
+        exchangeCode
+      });
+      const price = resolveQuotePriceFromResponse(quoteResponse);
+
+      if (price > 0) {
+        return price;
+      }
+    } catch (error) {
+      // Continue fallback chain across exchanges.
+    }
+  }
+
+  return 0;
+};
+
 export const isBreezeConnected = (brokerAuth = null) => {
   const { apiKey, sessionToken } = getBreezeConfig();
   const storedSessionToken = brokerAuth?.sessionToken?.trim() || "";
@@ -927,6 +1026,39 @@ export const syncBreezeHoldings = async () => {
         holding.currentPrice = resolvedPrice;
       }
     });
+
+    const unresolvedPriceHoldings = normalizedHoldings.filter((holding) => (
+      holding.instrumentType !== "Cash"
+      && toNumber(holding.currentPrice) <= 0
+      && String(holding.sourceStockCode || "").trim()
+    ));
+
+    if (unresolvedPriceHoldings.length > 0) {
+      const uniqueStockCodes = [...new Set(unresolvedPriceHoldings.map((holding) => String(holding.sourceStockCode || "").trim().toUpperCase()))];
+      const quotePriceByStockCode = new Map();
+
+      await Promise.all(uniqueStockCodes.map(async (stockCode) => {
+        const price = await resolveBreezeQuotePrice(breeze, stockCode);
+
+        if (price > 0) {
+          quotePriceByStockCode.set(stockCode, price);
+        }
+      }));
+
+      normalizedHoldings.forEach((holding) => {
+        const stockCode = String(holding.sourceStockCode || "").trim().toUpperCase();
+
+        if (!stockCode || toNumber(holding.currentPrice) > 0) {
+          return;
+        }
+
+        const fallbackPrice = toNumber(quotePriceByStockCode.get(stockCode));
+
+        if (fallbackPrice > 0) {
+          holding.currentPrice = fallbackPrice;
+        }
+      });
+    }
 
     if (process.env.NODE_ENV !== "production") {
       const unresolvedAverage = normalizedHoldings.find(
