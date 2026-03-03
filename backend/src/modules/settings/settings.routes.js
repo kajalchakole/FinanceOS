@@ -1,6 +1,15 @@
 import { Router } from "express";
 
-import { getSettings, updateEPFInterval, updateFDInterval, updateNPSInterval, updatePPFInterval } from "./settings.controller.js";
+import {
+  clearAutoBackupPassphrase,
+  getSettings,
+  updateBackupSettings,
+  updateEPFInterval,
+  updateFDInterval,
+  updateNPSInterval,
+  updatePPFInterval,
+  upsertAutoBackupPassphrase
+} from "./settings.controller.js";
 
 const settingsRouter = Router();
 
@@ -9,5 +18,8 @@ settingsRouter.patch("/fd-interval", updateFDInterval);
 settingsRouter.patch("/epf-interval", updateEPFInterval);
 settingsRouter.patch("/nps-interval", updateNPSInterval);
 settingsRouter.patch("/ppf-interval", updatePPFInterval);
+settingsRouter.patch("/backup", updateBackupSettings);
+settingsRouter.put("/backup/passphrase", upsertAutoBackupPassphrase);
+settingsRouter.delete("/backup/passphrase", clearAutoBackupPassphrase);
 
 export default settingsRouter;
