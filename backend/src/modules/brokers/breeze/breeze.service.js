@@ -333,16 +333,9 @@ const hasAnyValueForKeys = (item, keys = []) => keys.some((key) => {
 const upsertByQuality = (rows) => {
   const map = new Map();
   const sanitizeForKey = (value) => String(value || "").trim().toLowerCase();
-  const toBucketedNumber = (value) => {
-    const numericValue = toNumber(value);
-    return Number.isFinite(numericValue) ? numericValue.toFixed(6) : "0.000000";
-  };
 
   for (const row of rows) {
     const sourceCodeKey = sanitizeForKey(row.sourceStockCode);
-    const quantityKey = toBucketedNumber(row.quantity);
-    const averagePriceKey = toBucketedNumber(row.averagePrice);
-    const currentPriceKey = toBucketedNumber(row.currentPrice);
     const accountKey = sanitizeForKey(row.brokerAccountId);
     const folioKey = sanitizeForKey(row.folioNumber);
     const nameKey = sanitizeForKey(row.instrumentName);
@@ -352,19 +345,13 @@ const upsertByQuality = (rows) => {
         sourceCodeKey,
         typeKey,
         accountKey,
-        folioKey,
-        quantityKey,
-        averagePriceKey,
-        currentPriceKey
+        folioKey
       ].join("::")
       : [
         nameKey,
         typeKey,
         accountKey,
-        folioKey,
-        quantityKey,
-        averagePriceKey,
-        currentPriceKey
+        folioKey
       ].join("::");
 
     const existing = map.get(key);
@@ -950,7 +937,7 @@ export const syncBreezeHoldings = async () => {
     }
     const existingHoldings = await Holding.find(
       { broker: "breeze" },
-      { instrumentName: 1, instrumentType: 1, averagePrice: 1, currentPrice: 1 }
+      { instrumentName: 1, instrumentType: 1, averagePrice: 1, currentPrice: 1, goalId: 1 }
     ).lean();
 
     const previousPriceByKey = existingHoldings.reduce((accumulator, row) => {
@@ -961,6 +948,20 @@ export const syncBreezeHoldings = async () => {
       return accumulator;
     }, new Map());
 
+    const goalIdByHoldingKey = existingHoldings.reduce((accumulator, row) => {
+      if (!row?.goalId) {
+        return accumulator;
+      }
+
+      const key = getHoldingKey(row.instrumentName, row.instrumentType);
+
+      if (!accumulator.has(key)) {
+        accumulator.set(key, row.goalId);
+      }
+
+      return accumulator;
+    }, new Map());
+
     const normalizedRows = [...dematItems, ...portfolioItems].map((item) => {
       const normalized = normalizeBreezeHolding(item);
       normalized.__debugRawItem = item;
@@ -968,6 +969,11 @@ export const syncBreezeHoldings = async () => {
       normalized.__debugSource = dematItems.includes(item) ? "demat" : "portfolio";
       const key = getHoldingKey(normalized.instrumentName, normalized.instrumentType);
       const previous = previousPriceByKey.get(key);
+      const existingGoalId = goalIdByHoldingKey.get(key);
+
+      if (existingGoalId) {
+        normalized.goalId = existingGoalId;
+      }
 
       if (previous) {
         if (normalized.averagePrice <= 0 && previous.averagePrice > 0) {
