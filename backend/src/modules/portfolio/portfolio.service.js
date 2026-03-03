@@ -9,6 +9,13 @@ import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 
 const getHoldingValue = (holding) => Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
 const getInvestedValue = (holding) => Number(holding.quantity || 0) * Number(holding.averagePrice || 0);
+const getProfitPercent = (value, investedValue) => {
+  if (!investedValue) {
+    return 0;
+  }
+
+  return ((value - investedValue) / investedValue) * 100;
+};
 
 const getPercentage = (value, total) => {
   if (!total) {
@@ -39,7 +46,7 @@ const buildGroupedAllocation = (holdings, keySelector, netWorth) => {
 export const getPortfolioSummary = async () => {
   const holdings = await Holding.find().lean();
 
-  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf] = await Promise.all([
+  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf, activeFixedDeposits, activeEpfAccounts, activeNpsAccounts, activePpfAccounts, activeCommodities] = await Promise.all([
     FixedDeposit.aggregate([
       {
         $match: {
@@ -143,7 +150,18 @@ export const getPortfolioSummary = async () => {
     ]),
     Goal.findOne({ useEpf: true }, { _id: 1 }).lean(),
     Goal.findOne({ useNps: true }, { _id: 1 }).lean(),
-    Goal.findOne({ usePpf: true }, { _id: 1 }).lean()
+    Goal.findOne({ usePpf: true }, { _id: 1 }).lean(),
+    FixedDeposit.find({ status: { $in: ["active", "matured"] } }).lean(),
+    EpfAccount.find({
+      $or: [{ isActive: true }, { isActive: { $exists: false } }]
+    }).lean(),
+    NpsAccount.find({
+      $or: [{ isActive: true }, { isActive: { $exists: false } }]
+    }).lean(),
+    PpfAccount.find({
+      $or: [{ isActive: true }, { isActive: { $exists: false } }]
+    }).lean(),
+    PhysicalCommodity.find({ isActive: true }).lean()
   ]);
 
   const totalFDValue = fdAggregation.length > 0 ? Number(fdAggregation[0].total || 0) : 0;
@@ -250,11 +268,13 @@ export const getPortfolioSummary = async () => {
     allocationByInstrumentType.sort((a, b) => b.value - a.value);
   }
 
-  const topHoldings = holdingsWithValue
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 5)
-    .map((holding) => ({
-      _id: holding._id,
+  const topHoldingsFromMarket = holdingsWithValue.map((holding) => {
+    const value = Number(holding.value || 0);
+    const investedValue = Number(holding.investedValue || 0);
+    const profit = value - investedValue;
+
+    return {
+      _id: `holding:${holding._id}`,
       instrumentName: holding.instrumentName,
       broker: holding.broker,
       brokerDisplayName: getBrokerDisplayName(holding.broker),
@@ -262,12 +282,137 @@ export const getPortfolioSummary = async () => {
       quantity: holding.quantity,
       averagePrice: holding.averagePrice,
       currentPrice: holding.currentPrice,
-      value: holding.value,
-      investedValue: holding.investedValue,
-      profit: holding.value - holding.investedValue,
-      profitPercent: getPercentage(holding.value - holding.investedValue, holding.investedValue),
-      percentOfNetWorth: getPercentage(holding.value, netWorth)
-    }));
+      value,
+      investedValue,
+      profit,
+      profitPercent: getProfitPercent(value, investedValue),
+      percentOfNetWorth: getPercentage(value, netWorth)
+    };
+  });
+
+  const topHoldingsFromFd = activeFixedDeposits.map((fd) => {
+    const value = Number(fd.cachedValue || 0);
+    const investedValue = Number(fd.principal || 0);
+    const profit = value - investedValue;
+
+    return {
+      _id: `fd:${fd._id}`,
+      instrumentName: fd.fdName || "Fixed Deposit",
+      broker: fd.bank || "Fixed Deposits",
+      brokerDisplayName: fd.bank || "Fixed Deposits",
+      instrumentType: "Fixed Deposit",
+      quantity: 1,
+      averagePrice: investedValue,
+      currentPrice: value,
+      value,
+      investedValue,
+      profit,
+      profitPercent: getProfitPercent(value, investedValue),
+      percentOfNetWorth: getPercentage(value, netWorth)
+    };
+  });
+
+  const topHoldingsFromEpf = activeEpfAccounts.map((account) => {
+    const value = Number(account.cachedValue || 0);
+    const investedValue = Number(account.openingBalance || 0);
+    const profit = value - investedValue;
+
+    return {
+      _id: `epf:${account._id}`,
+      instrumentName: account.name || "EPF Account",
+      broker: "EPF",
+      brokerDisplayName: "EPF",
+      instrumentType: "EPF",
+      quantity: 1,
+      averagePrice: investedValue,
+      currentPrice: value,
+      value,
+      investedValue,
+      profit,
+      profitPercent: getProfitPercent(value, investedValue),
+      percentOfNetWorth: getPercentage(value, netWorth)
+    };
+  });
+
+  const topHoldingsFromNps = activeNpsAccounts.map((account) => {
+    const value = Number(account.cachedValue || 0);
+    const investedValue = Number(account.openingBalance || 0);
+    const profit = value - investedValue;
+
+    return {
+      _id: `nps:${account._id}`,
+      instrumentName: account.name || "NPS Account",
+      broker: "NPS",
+      brokerDisplayName: "NPS",
+      instrumentType: "NPS",
+      quantity: 1,
+      averagePrice: investedValue,
+      currentPrice: value,
+      value,
+      investedValue,
+      profit,
+      profitPercent: getProfitPercent(value, investedValue),
+      percentOfNetWorth: getPercentage(value, netWorth)
+    };
+  });
+
+  const topHoldingsFromPpf = activePpfAccounts.map((account) => {
+    const value = Number(account.cachedValue || 0);
+    const investedValue = Number(account.openingBalance || 0);
+    const profit = value - investedValue;
+
+    return {
+      _id: `ppf:${account._id}`,
+      instrumentName: account.name || "PPF Account",
+      broker: "PPF",
+      brokerDisplayName: "PPF",
+      instrumentType: "PPF",
+      quantity: 1,
+      averagePrice: investedValue,
+      currentPrice: value,
+      value,
+      investedValue,
+      profit,
+      profitPercent: getProfitPercent(value, investedValue),
+      percentOfNetWorth: getPercentage(value, netWorth)
+    };
+  });
+
+  const topHoldingsFromCommodity = activeCommodities.map((commodity) => {
+    const quantity = Number(commodity.quantity || 0);
+    const averagePrice = Number(commodity.averageCostPerUnit || 0);
+    const currentPrice = Number(commodity.currentPricePerUnit || 0);
+    const investedValue = quantity * averagePrice;
+    const value = quantity * currentPrice;
+    const profit = value - investedValue;
+
+    return {
+      _id: `commodity:${commodity._id}`,
+      instrumentName: commodity.name || "Commodity",
+      broker: commodity.commodityType || "Physical Commodity",
+      brokerDisplayName: commodity.commodityType || "Physical Commodity",
+      instrumentType: "Physical Commodity",
+      quantity,
+      averagePrice,
+      currentPrice,
+      value,
+      investedValue,
+      profit,
+      profitPercent: getProfitPercent(value, investedValue),
+      percentOfNetWorth: getPercentage(value, netWorth)
+    };
+  });
+
+  const topHoldings = [
+    ...topHoldingsFromMarket,
+    ...topHoldingsFromFd,
+    ...topHoldingsFromEpf,
+    ...topHoldingsFromNps,
+    ...topHoldingsFromPpf,
+    ...topHoldingsFromCommodity
+  ]
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   return {
     netWorth,

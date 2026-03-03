@@ -202,7 +202,7 @@ function PortfolioPage() {
 
           <article className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
             <div className="border-b border-brand-line px-5 py-4">
-              <h3 className="text-lg font-semibold tracking-tight text-brand-text">Top Holdings</h3>
+              <h3 className="text-lg font-semibold tracking-tight text-brand-text">Top Assets</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-brand-line text-left text-sm">
