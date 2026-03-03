@@ -100,8 +100,8 @@ function DashboardPage() {
   const overallStatus = summary?.overallStatus || "At Risk";
   const statusBadgeClassName = useMemo(() => (
     overallStatus === "On Track"
-      ? "bg-green-50 text-green-600"
-      : "bg-red-50 text-red-600"
+      ? "bg-green-50 text-green-600 dark:bg-green-900/25 dark:text-green-400"
+      : "bg-red-50 text-red-600 dark:bg-red-900/25 dark:text-red-400"
   ), [overallStatus]);
 
   const cards = [
@@ -132,12 +132,12 @@ function DashboardPage() {
   return (
     <section className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold text-gray-900">Dashboard</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-[#F3F4F6]">Dashboard</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-[#9CA3AF]">
           Consolidated portfolio readiness across active goals.
           {summary ? ` ${summary.goalCountIncluded} goals included.` : ""}
         </p>
-        <p className="mt-1 text-xs text-gray-400">{lastBackupText}</p>
+        <p className="mt-1 text-xs text-gray-400 dark:text-[#6B7280]">{lastBackupText}</p>
       </div>
 
       {health ? (
@@ -157,16 +157,16 @@ function DashboardPage() {
         </div>
       ) : null}
 
-      {isLoading ? <p className="text-sm text-gray-600">Loading dashboard...</p> : null}
+      {isLoading ? <p className="text-sm text-gray-600 dark:text-[#9CA3AF]">Loading dashboard...</p> : null}
       {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
 
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <article key={card.title} className="app-surface-card p-6 transition-all duration-200 ease-out hover:-translate-y-[2px]">
-            <p className="text-sm text-gray-500">{card.title}</p>
+            <p className="text-sm text-gray-500 dark:text-[#9CA3AF]">{card.title}</p>
             <div className="mt-2 min-h-10">
               {card.renderValue || (
-                <p className={`text-2xl font-semibold text-gray-900 ${card.valueClassName || ""}`}>
+                <p className={`text-2xl font-semibold text-gray-900 dark:text-[#F3F4F6] ${card.valueClassName || ""}`}>
                   {card.value}
                 </p>
               )}
@@ -176,7 +176,7 @@ function DashboardPage() {
       </div>
 
       {reconnectToast ? (
-        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:border-[#1F2937] dark:bg-green-900/25 dark:text-green-400 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
           {reconnectToast}
         </div>
       ) : null}

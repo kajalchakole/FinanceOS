@@ -17,8 +17,8 @@ const links = [
 
 function Sidebar() {
   return (
-    <aside className="sticky top-0 hidden h-screen w-72 border-r border-gray-200 bg-white px-4 py-5 lg:block">
-      <p className="mb-5 px-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Workspace</p>
+    <aside className="sticky top-0 hidden h-screen w-72 border-r border-gray-200 bg-white px-4 py-5 transition-colors duration-300 ease-out dark:border-[#1F2937] dark:bg-[#0F141A] lg:block">
+      <p className="mb-5 px-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-[#6B7280]">Workspace</p>
 
       <nav className="space-y-1">
         {links.map((link) => (
@@ -29,8 +29,8 @@ function Sidebar() {
               [
                 "block rounded-md px-3 py-2.5 text-sm transition-all duration-200 ease-out",
                 isActive
-                  ? "border-l-4 border-indigo-600 bg-indigo-50 font-medium text-indigo-700"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "border-l-4 border-indigo-600 bg-indigo-50 font-medium text-indigo-700 dark:bg-[#1C2430] dark:text-indigo-300"
+                  : "text-gray-600 hover:bg-gray-50 dark:text-[#9CA3AF] dark:hover:bg-[#161D26]"
               ].join(" ")
             }
           >

@@ -1,15 +1,16 @@
 /** @type {import("tailwindcss").Config} */
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
       colors: {
         brand: {
-          bg: "#F8FAFC",
-          panel: "#ffffff",
-          text: "#111827",
-          muted: "#6b7280",
-          line: "#e5e7eb"
+          bg: "rgb(var(--color-brand-bg) / <alpha-value>)",
+          panel: "rgb(var(--color-brand-panel) / <alpha-value>)",
+          text: "rgb(var(--color-brand-text) / <alpha-value>)",
+          muted: "rgb(var(--color-brand-muted) / <alpha-value>)",
+          line: "rgb(var(--color-brand-line) / <alpha-value>)"
         }
       },
       boxShadow: {

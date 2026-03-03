@@ -6,7 +6,7 @@ import TopHeader from "../components/TopHeader";
 
 function AppLayout() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] transition-colors duration-300 ease-out dark:bg-[#0B0F14] dark:bg-[radial-gradient(circle_at_top,_#111827_0%,_#0B0F14_60%)]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px]">
         <Sidebar />
 
