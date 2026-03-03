@@ -5,6 +5,7 @@ import GoalCard from "../components/GoalCard";
 import api from "../services/api";
 
 const GOALS_VIEW_MODE_STORAGE_KEY = "goalsViewMode";
+const CURRENT_YEAR = new Date().getFullYear();
 
 const formatCurrency = (value) => `\u20B9${Number(value || 0).toLocaleString("en-IN", {
   maximumFractionDigits: 0
@@ -27,6 +28,38 @@ const getProjectionMeta = (projection = {}) => {
     gapClassName: projection.gap >= 0 ? "text-emerald-600" : "text-rose-600",
     statusClassName,
     statusLabel: isExpired ? "Year Passed" : (projection.status || "At Risk")
+  };
+};
+
+const getGoalStatusPriority = (status = "") => {
+  switch (status) {
+    case "At Risk":
+      return 0;
+    case "Expired":
+      return 1;
+    case "On Track":
+      return 2;
+    case "Goal Met":
+      return 3;
+    default:
+      return 4;
+  }
+};
+
+const getGoalInsightScore = (goal = {}) => {
+  const projection = goal.projection || {};
+  const gap = Number(projection.gap || 0);
+  const shortfall = gap < 0 ? Math.abs(gap) : 0;
+  const yearsRemaining = Math.max(0, Number(goal.targetYear || CURRENT_YEAR) - CURRENT_YEAR);
+  const annualCatchUpNeed = shortfall / (yearsRemaining + 1);
+  const statusPriority = getGoalStatusPriority(projection.status);
+
+  return {
+    statusPriority,
+    annualCatchUpNeed,
+    shortfall,
+    targetYear: Number(goal.targetYear || 0),
+    name: String(goal.name || "")
   };
 };
 
@@ -210,6 +243,35 @@ function GoalsPage() {
     return sortConfig.direction === "asc" ? sorted : sorted.reverse();
   }, [goals, sortConfig.direction, sortConfig.key]);
 
+  const cardGoals = useMemo(() => {
+    const sorted = [...goals];
+
+    sorted.sort((left, right) => {
+      const leftScore = getGoalInsightScore(left);
+      const rightScore = getGoalInsightScore(right);
+
+      if (leftScore.statusPriority !== rightScore.statusPriority) {
+        return leftScore.statusPriority - rightScore.statusPriority;
+      }
+
+      if (leftScore.annualCatchUpNeed !== rightScore.annualCatchUpNeed) {
+        return rightScore.annualCatchUpNeed - leftScore.annualCatchUpNeed;
+      }
+
+      if (leftScore.shortfall !== rightScore.shortfall) {
+        return rightScore.shortfall - leftScore.shortfall;
+      }
+
+      if (leftScore.targetYear !== rightScore.targetYear) {
+        return leftScore.targetYear - rightScore.targetYear;
+      }
+
+      return leftScore.name.localeCompare(rightScore.name, undefined, { sensitivity: "base" });
+    });
+
+    return sorted;
+  }, [goals]);
+
   const handleSort = (key) => {
     setSortConfig((current) => {
       if (current.key === key) {
@@ -279,7 +341,7 @@ function GoalsPage() {
 
       {!isLoading && !error && goals.length > 0 && viewMode === "cards" ? (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {sortedGoals.map((goal) => (
+          {cardGoals.map((goal) => (
             <GoalCard
               key={goal._id}
               goal={goal}
