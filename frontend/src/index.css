@@ -2,6 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-brand-bg text-brand-text antialiased;
+@layer base {
+  body {
+    @apply bg-[#F8FAFC] text-gray-900 antialiased;
+  }
+}
+
+@layer components {
+  .app-surface-card {
+    @apply rounded-xl border border-gray-100 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.04)];
+  }
+
+  .app-fade-in {
+    animation: app-fade-in 220ms ease-out;
+  }
+
+  .app-divider {
+    @apply my-8 border-t border-gray-200;
+  }
+
+  .fo-table {
+    @apply min-w-full text-left text-sm text-gray-600;
+  }
+
+  .fo-table thead {
+    @apply bg-gray-50 text-gray-600;
+  }
+
+  .fo-table th {
+    @apply px-4 py-3 text-sm font-medium;
+  }
+
+  .fo-table th button {
+    @apply font-medium text-gray-600 transition-all duration-200 ease-out hover:text-gray-900;
+  }
+
+  .fo-table td {
+    @apply px-4 py-3;
+  }
+
+  .fo-table-body tr {
+    @apply border-b border-gray-100 transition-colors duration-200 ease-out hover:bg-gray-50;
+  }
+
+  .fo-table tbody tr {
+    @apply border-b border-gray-100 transition-colors duration-200 ease-out hover:bg-gray-50;
+  }
+
+  .fo-table-body tr:last-child {
+    @apply border-b-0;
+  }
+
+  .fo-table tbody tr:last-child {
+    @apply border-b-0;
+  }
+}
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

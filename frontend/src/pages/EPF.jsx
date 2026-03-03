@@ -259,7 +259,7 @@ function EPFPage() {
 
       {!loading ? (
         <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full border-collapse text-sm">
+          <table className="fo-table">
             <thead>
               <tr className="border-b border-brand-line text-left text-brand-muted">
                 <th className="px-3 py-2">Name</th>
@@ -389,3 +389,4 @@ function EPFPage() {
 }
 
 export default EPFPage;
+

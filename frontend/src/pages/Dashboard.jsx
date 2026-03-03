@@ -100,8 +100,8 @@ function DashboardPage() {
   const overallStatus = summary?.overallStatus || "At Risk";
   const statusBadgeClassName = useMemo(() => (
     overallStatus === "On Track"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border-rose-200 bg-rose-50 text-rose-700"
+      ? "bg-green-50 text-green-600"
+      : "bg-red-50 text-red-600"
   ), [overallStatus]);
 
   const cards = [
@@ -122,7 +122,7 @@ function DashboardPage() {
       title: "Overall Status",
       value: overallStatus,
       renderValue: (
-        <span className={`inline-flex rounded-lg border px-3 py-1 text-sm font-semibold ${statusBadgeClassName}`}>
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClassName}`}>
           {overallStatus}
         </span>
       )
@@ -132,24 +132,24 @@ function DashboardPage() {
   return (
     <section className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-brand-text">Dashboard</h2>
-        <p className="mt-1 text-sm text-brand-muted">
+        <h2 className="text-2xl font-semibold text-gray-900">Dashboard</h2>
+        <p className="mt-1 text-sm text-gray-500">
           Consolidated portfolio readiness across active goals.
           {summary ? ` ${summary.goalCountIncluded} goals included.` : ""}
         </p>
-        <p className="mt-2 text-xs text-brand-muted">{lastBackupText}</p>
+        <p className="mt-1 text-xs text-gray-400">{lastBackupText}</p>
       </div>
 
       {health ? (
         <div className={`rounded-xl border px-4 py-3 text-sm ${
           health.severity === "critical"
-            ? "border-rose-300 bg-rose-50 text-rose-700"
-            : "border-amber-300 bg-amber-50 text-amber-700"
+            ? "border-red-200 bg-red-50 text-red-700"
+            : "border-yellow-200 bg-yellow-50 text-yellow-700"
         }`}>
           <p>{health.severity === "critical" ? "Critical: " : "Warning: "}{health.message}</p>
           <button
             type="button"
-            className="mt-2 rounded-lg border border-current px-3 py-1 text-xs font-semibold"
+            className="mt-2 rounded-full border border-current px-3 py-1 text-xs font-semibold transition-all duration-200 ease-out hover:bg-white/60"
             onClick={() => navigate("/settings")}
           >
             Backup Now
@@ -157,16 +157,16 @@ function DashboardPage() {
         </div>
       ) : null}
 
-      {isLoading ? <p className="text-sm text-brand-muted">Loading dashboard...</p> : null}
+      {isLoading ? <p className="text-sm text-gray-600">Loading dashboard...</p> : null}
       {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
 
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <article key={card.title} className="rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft">
-            <p className="text-sm text-brand-muted">{card.title}</p>
-            <div className="mt-4 min-h-10">
+          <article key={card.title} className="app-surface-card p-6 transition-all duration-200 ease-out hover:-translate-y-[2px]">
+            <p className="text-sm text-gray-500">{card.title}</p>
+            <div className="mt-2 min-h-10">
               {card.renderValue || (
-                <p className={`text-2xl font-semibold tracking-tight text-brand-text ${card.valueClassName || ""}`}>
+                <p className={`text-2xl font-semibold text-gray-900 ${card.valueClassName || ""}`}>
                   {card.value}
                 </p>
               )}
@@ -176,7 +176,7 @@ function DashboardPage() {
       </div>
 
       {reconnectToast ? (
-        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-soft">
+        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
           {reconnectToast}
         </div>
       ) : null}

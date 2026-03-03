@@ -83,7 +83,7 @@ function SyncStatus() {
     ? "text-emerald-700"
     : status === "Outdated"
       ? "text-amber-700"
-      : "text-brand-muted";
+      : "text-gray-600";
 
   const handleSyncSuccess = async (message) => {
     await refreshPortfolio();
@@ -95,7 +95,7 @@ function SyncStatus() {
       <button
         type="button"
         onClick={() => setDrawerOpen(true)}
-        className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm text-brand-muted transition hover:bg-slate-50"
+        className="rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-600 transition-all duration-200 ease-out hover:bg-gray-200"
       >
         Sync:
         {" "}
@@ -111,7 +111,7 @@ function SyncStatus() {
       />
 
       {toastMessage ? (
-        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-soft">
+        <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
           {toastMessage}
         </div>
       ) : null}

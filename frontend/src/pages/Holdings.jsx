@@ -485,7 +485,7 @@ function HoldingsPage() {
       {!isLoading && !error && filteredHoldings.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+            <table className="fo-table">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-5 py-3">
@@ -534,7 +534,7 @@ function HoldingsPage() {
                   <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-line">
+              <tbody className="fo-table-body">
                 {sortedHoldings.map((holding) => {
                   const investedValue = Number(holding.quantity || 0) * Number(holding.averagePrice || 0);
                   const currentValue = Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
@@ -625,3 +625,4 @@ function HoldingsPage() {
 }
 
 export default HoldingsPage;
+

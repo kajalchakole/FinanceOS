@@ -230,7 +230,7 @@ function PhysicalCommoditiesPage() {
       {!isLoading && sortedCommodities.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+            <table className="fo-table">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-5 py-3 font-semibold text-brand-text">Name</th>
@@ -243,7 +243,7 @@ function PhysicalCommoditiesPage() {
                   <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-line">
+              <tbody className="fo-table-body">
                 {sortedCommodities.map((commodity) => {
                   const currentValue = Number(commodity.currentValue ?? (Number(commodity.quantity || 0) * Number(commodity.currentPricePerUnit || 0)));
 
@@ -314,3 +314,4 @@ function PhysicalCommoditiesPage() {
 }
 
 export default PhysicalCommoditiesPage;
+

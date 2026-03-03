@@ -5,15 +5,15 @@ export default {
     extend: {
       colors: {
         brand: {
-          bg: "#f8fafc",
+          bg: "#F8FAFC",
           panel: "#ffffff",
-          text: "#0f172a",
-          muted: "#64748b",
-          line: "#e2e8f0"
+          text: "#111827",
+          muted: "#6b7280",
+          line: "#e5e7eb"
         }
       },
       boxShadow: {
-        soft: "0 8px 24px -12px rgba(15, 23, 42, 0.18)"
+        soft: "0 8px 30px rgba(0,0,0,0.04)"
       }
     }
   },

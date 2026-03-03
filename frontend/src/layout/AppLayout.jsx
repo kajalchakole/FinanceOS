@@ -6,14 +6,14 @@ import TopHeader from "../components/TopHeader";
 
 function AppLayout() {
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px]">
         <Sidebar />
 
         <div className="flex min-h-screen flex-1 flex-col">
           <TopHeader />
 
-          <main className="flex-1 p-8 lg:p-10">
+          <main className="app-fade-in flex-1 p-8 lg:p-10">
             <Outlet />
           </main>
         </div>

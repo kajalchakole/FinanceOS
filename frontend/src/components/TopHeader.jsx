@@ -22,19 +22,28 @@ function TopHeader() {
   })}`;
 
   return (
-    <header className="border-b border-brand-line bg-brand-panel px-6 py-5 shadow-soft sm:px-8 lg:px-10">
+    <header className="border-b border-gray-200 bg-white px-6 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)] sm:px-8 lg:px-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-xl font-semibold tracking-tight text-brand-text">FinanceOS</h1>
+        <h1 className="text-lg font-semibold text-gray-900">FinanceOS</h1>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm text-brand-muted">
-            Net Worth: <span className="font-semibold text-brand-text">{formattedNetWorth}</span>
+          <div className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+            Net Worth: <span className="text-indigo-600">{formattedNetWorth}</span>
           </div>
 
           <SyncStatus />
 
-          <button type="button" onClick={handleLogout} className="rounded-xl border border-brand-line bg-white px-4 py-2 text-sm font-semibold text-brand-text transition hover:bg-slate-100">
-            Logout
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label="Logout"
+            title="Logout"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 transition-all duration-200 ease-out hover:bg-gray-100 hover:text-gray-900"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 3h2.25A1.5 1.5 0 0 1 19.5 4.5v15a1.5 1.5 0 0 1-1.5 1.5h-2.25" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 16.5 15 12l-4.5-4.5M15 12H4.5" />
+            </svg>
           </button>
         </div>
       </div>

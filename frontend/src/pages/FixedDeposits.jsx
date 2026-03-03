@@ -454,7 +454,7 @@ function FixedDepositsPage() {
 
         {!isLoading ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-brand-line text-left text-sm">
+            <table className="fo-table">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-5 py-3 font-semibold text-brand-text">Bank</th>
@@ -469,7 +469,7 @@ function FixedDepositsPage() {
                   <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-line">
+              <tbody className="fo-table-body">
                 {fixedDeposits.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="px-5 py-6 text-center text-sm text-brand-muted">
@@ -655,3 +655,4 @@ function FixedDepositsPage() {
 }
 
 export default FixedDepositsPage;
+
