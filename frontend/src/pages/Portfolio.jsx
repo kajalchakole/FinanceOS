@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+import MetricCard from "../components/MetricCard";
 import api from "../services/api";
 
 function PortfolioPage() {
@@ -76,7 +77,7 @@ function PortfolioPage() {
 
   const sortIndicator = (config, key) => (config.key === key ? (config.direction === "asc" ? " ▲" : " ▼") : "");
 
-  const overviewCards = [
+  const heroCards = [
     {
       label: "Net Worth",
       value: formatCurrency(summary?.netWorth)
@@ -90,11 +91,10 @@ function PortfolioPage() {
       value: formatCurrency(summary?.totalProfit),
       helper: formatPercent(summary?.totalProfitPercent),
       valueClassName: Number(summary?.totalProfit || 0) >= 0 ? "text-emerald-600" : "text-rose-600"
-    },
-    {
-      label: "Total Holdings",
-      value: Number(summary?.totalHoldings || 0).toString()
-    },
+    }
+  ];
+
+  const assetTotalCards = [
     {
       label: "Market Holdings",
       value: formatCurrency(summary?.totalMarketValue)
@@ -116,37 +116,45 @@ function PortfolioPage() {
       value: formatCurrency(summary?.totalPpfValue)
     },
     {
-      label: "Unassigned Capital",
-      value: formatPercent(summary?.unassignedPercent),
-      helper: formatCurrency(summary?.unassignedValue)
+      label: "Physical Commodity",
+      value: formatCurrency(summary?.totalCommodityValue)
     }
   ];
 
   return (
-    <section className="space-y-8">
+    <section className="mx-auto max-w-7xl">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight text-brand-text">Portfolio Intelligence</h2>
         <p className="mt-1 text-sm text-brand-muted">Allocation drilldown across brokers, types, and top positions.</p>
       </div>
 
-      {isLoading ? <p className="text-sm text-brand-muted">Loading portfolio summary...</p> : null}
-      {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
+      {isLoading ? <p className="mt-8 text-sm text-brand-muted">Loading portfolio summary...</p> : null}
+      {error ? <p className="mt-8 text-sm font-medium text-rose-600">{error}</p> : null}
 
       {!isLoading && !error && summary ? (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {overviewCards.map((card) => (
-              <article key={card.label} className="rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft">
-                <p className="text-sm text-brand-muted">{card.label}</p>
-                <p className={`mt-3 text-2xl font-semibold tracking-tight text-brand-text ${card.valueClassName || ""}`}>
-                  {card.value}
-                </p>
-                {card.helper ? <p className="mt-1 text-xs text-brand-muted">{card.helper}</p> : null}
-              </article>
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {heroCards.map((card) => (
+              <MetricCard key={card.label} variant="hero" {...card} />
             ))}
           </div>
 
-          <div className="grid gap-8 xl:grid-cols-2">
+          <div className="mt-8">
+            <h3 className="mb-4 text-lg font-semibold tracking-tight text-brand-text">Asset Totals</h3>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {assetTotalCards.map((card) => (
+                <MetricCard key={card.label} variant="compact" {...card} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-brand-line pt-3 text-sm text-brand-muted">
+            <span>Total Holdings: {Number(summary?.totalHoldings || 0).toLocaleString("en-IN")}</span>
+            <span className="mx-3 text-brand-line">|</span>
+            <span>Unassigned Capital: {formatPercent(summary?.unassignedPercent)}</span>
+          </div>
+
+          <div className="mt-8 grid gap-8 xl:grid-cols-2">
             <article className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
               <div className="border-b border-brand-line px-5 py-4">
                 <h3 className="text-lg font-semibold tracking-tight text-brand-text">Allocation by Instrument Type</h3>
@@ -200,7 +208,7 @@ function PortfolioPage() {
             </article>
           </div>
 
-          <article className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
+          <article className="mt-8 overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
             <div className="border-b border-brand-line px-5 py-4">
               <h3 className="text-lg font-semibold tracking-tight text-brand-text">Top Assets</h3>
             </div>
