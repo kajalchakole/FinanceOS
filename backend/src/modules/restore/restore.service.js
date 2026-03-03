@@ -88,46 +88,63 @@ const normalizeForInsert = (collection) => collection.map((item) => {
   return doc;
 });
 
+const isTransactionNotSupportedError = (error) => {
+  const message = error?.message || "";
+  return (
+    message.includes("Transaction numbers are only allowed on a replica set member or mongos")
+    || message.includes("Transaction numbers are only allowed")
+    || error?.code === 20
+  );
+};
+
 export const restoreSnapshot = async (snapshotObj) => {
   validateSnapshotShape(snapshotObj);
 
   const { data } = snapshotObj;
 
-  const session = await mongoose.startSession();
+  const restoreWork = async (session = null) => {
+    const options = session ? { session } : {};
 
-  const restoreWork = async () => {
     await Promise.all([
-      Holding.deleteMany({}, { session }),
-      FixedDeposit.deleteMany({}, { session }),
-      EpfAccount.deleteMany({}, { session }),
-      NpsAccount.deleteMany({}, { session }),
-      PpfAccount.deleteMany({}, { session }),
-      PhysicalCommodity.deleteMany({}, { session }),
-      Goal.deleteMany({}, { session }),
-      Setting.deleteMany({}, { session })
+      Holding.deleteMany({}, options),
+      FixedDeposit.deleteMany({}, options),
+      EpfAccount.deleteMany({}, options),
+      NpsAccount.deleteMany({}, options),
+      PpfAccount.deleteMany({}, options),
+      PhysicalCommodity.deleteMany({}, options),
+      Goal.deleteMany({}, options),
+      Setting.deleteMany({}, options)
     ]);
 
     if (data.goals.length) {
-      await Goal.insertMany(normalizeForInsert(data.goals), { session });
+      await Goal.insertMany(normalizeForInsert(data.goals), options);
     }
 
     await Promise.all([
-      data.holdings.length ? Holding.insertMany(normalizeForInsert(data.holdings), { session }) : Promise.resolve(),
-      data.fdAccounts.length ? FixedDeposit.insertMany(normalizeForInsert(data.fdAccounts), { session }) : Promise.resolve(),
-      data.epfAccounts.length ? EpfAccount.insertMany(normalizeForInsert(data.epfAccounts), { session }) : Promise.resolve(),
-      data.npsAccounts.length ? NpsAccount.insertMany(normalizeForInsert(data.npsAccounts), { session }) : Promise.resolve(),
-      data.ppfAccounts.length ? PpfAccount.insertMany(normalizeForInsert(data.ppfAccounts), { session }) : Promise.resolve(),
-      data.physicalCommodities.length ? PhysicalCommodity.insertMany(normalizeForInsert(data.physicalCommodities), { session }) : Promise.resolve()
+      data.holdings.length ? Holding.insertMany(normalizeForInsert(data.holdings), options) : Promise.resolve(),
+      data.fdAccounts.length ? FixedDeposit.insertMany(normalizeForInsert(data.fdAccounts), options) : Promise.resolve(),
+      data.epfAccounts.length ? EpfAccount.insertMany(normalizeForInsert(data.epfAccounts), options) : Promise.resolve(),
+      data.npsAccounts.length ? NpsAccount.insertMany(normalizeForInsert(data.npsAccounts), options) : Promise.resolve(),
+      data.ppfAccounts.length ? PpfAccount.insertMany(normalizeForInsert(data.ppfAccounts), options) : Promise.resolve(),
+      data.physicalCommodities.length ? PhysicalCommodity.insertMany(normalizeForInsert(data.physicalCommodities), options) : Promise.resolve()
     ]);
 
     const settingsEntries = Object.entries(data.settings || {}).map(([key, value]) => ({ key, value }));
     if (settingsEntries.length) {
-      await Setting.insertMany(settingsEntries, { session });
+      await Setting.insertMany(settingsEntries, options);
     }
   };
 
+  const session = await mongoose.startSession();
+
   try {
-    await session.withTransaction(restoreWork);
+    await session.withTransaction(() => restoreWork(session));
+  } catch (error) {
+    if (!isTransactionNotSupportedError(error)) {
+      throw error;
+    }
+
+    await restoreWork();
   } finally {
     await session.endSession();
   }
