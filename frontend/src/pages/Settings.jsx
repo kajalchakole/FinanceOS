@@ -12,6 +12,8 @@ function SettingsPage() {
   const [backupEnabled, setBackupEnabled] = useState(false);
   const [backupIntervalDays, setBackupIntervalDays] = useState("7");
   const [backupRetentionCount, setBackupRetentionCount] = useState("10");
+  const [sessionAutoLockEnabled, setSessionAutoLockEnabled] = useState(true);
+  const [sessionAutoLockMinutes, setSessionAutoLockMinutes] = useState("10");
   const [backupDirectory, setBackupDirectory] = useState("data/backups");
   const [backupPassphrase, setBackupPassphrase] = useState("");
   const [backupPassphraseConfigured, setBackupPassphraseConfigured] = useState(false);
@@ -29,6 +31,7 @@ function SettingsPage() {
   const [savingNps, setSavingNps] = useState(false);
   const [savingPpf, setSavingPpf] = useState(false);
   const [savingBackupSettings, setSavingBackupSettings] = useState(false);
+  const [savingSecuritySettings, setSavingSecuritySettings] = useState(false);
   const [savingPassphrase, setSavingPassphrase] = useState(false);
   const [savingManualBackup, setSavingManualBackup] = useState(false);
   const [savingRestore, setSavingRestore] = useState(false);
@@ -81,6 +84,10 @@ function SettingsPage() {
         }
         if (Number.isFinite(data.backupRetentionCount)) {
           setBackupRetentionCount(String(data.backupRetentionCount));
+        }
+        setSessionAutoLockEnabled(Boolean(data.sessionAutoLockEnabled ?? true));
+        if (Number.isFinite(data.sessionAutoLockMinutes)) {
+          setSessionAutoLockMinutes(String(data.sessionAutoLockMinutes));
         }
         setBackupDirectory(data.backupDirectory || "data/backups");
         setBackupPassphraseConfigured(Boolean(data.backupPassphraseConfigured));
@@ -204,6 +211,29 @@ function SettingsPage() {
       setError(requestError.response?.data?.message || "Unable to save backup settings");
     } finally {
       setSavingBackupSettings(false);
+    }
+  };
+
+  const handleSaveSecuritySettings = async () => {
+    const minutes = Number(sessionAutoLockMinutes);
+
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+      setError("Auto-lock minutes must be between 1 and 240.");
+      return;
+    }
+
+    setSavingSecuritySettings(true);
+    setError("");
+    try {
+      await settingsApi.updateSecuritySettings({
+        sessionAutoLockEnabled,
+        sessionAutoLockMinutes: minutes
+      });
+      withSuccess("Security settings saved");
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to save security settings");
+    } finally {
+      setSavingSecuritySettings(false);
     }
   };
 
@@ -393,6 +423,21 @@ function SettingsPage() {
             </div>
 
             {latestBackup ? <p className="mt-3 text-xs text-brand-muted">Latest backup: {latestBackup.filename} ({new Date(latestBackup.createdAt).toLocaleString()})</p> : <p className="mt-3 text-xs text-brand-muted">No backup found yet.</p>}
+          </div>
+
+          <div className="border-t border-brand-line pt-6">
+            <h3 className="text-lg font-semibold text-brand-text">Security</h3>
+            <div className="mt-4 flex items-center gap-2">
+              <input id="sessionAutoLockEnabled" type="checkbox" checked={sessionAutoLockEnabled} onChange={(event) => setSessionAutoLockEnabled(event.target.checked)} />
+              <label htmlFor="sessionAutoLockEnabled" className="text-sm font-medium text-brand-text">Enable Session Auto-lock</label>
+            </div>
+
+            <div className="mt-4">
+              <label className="mb-2 block text-sm font-medium text-brand-text" htmlFor="sessionAutoLockMinutes">Auto-lock Minutes</label>
+              <input id="sessionAutoLockMinutes" className="w-full max-w-xs rounded-xl border border-brand-line bg-brand-bg px-3 py-2 text-sm text-brand-text" type="number" min={1} max={240} step={1} value={sessionAutoLockMinutes} onChange={(event) => setSessionAutoLockMinutes(event.target.value)} />
+            </div>
+
+            <button type="button" className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={handleSaveSecuritySettings} disabled={savingSecuritySettings}>{savingSecuritySettings ? "Saving..." : "Save Security Settings"}</button>
           </div>
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}

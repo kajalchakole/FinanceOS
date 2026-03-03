@@ -46,6 +46,10 @@ export const getSettings = async (req, res, next) => {
     const backupRetentionCount = Number.isInteger(parsedRetentionCount) && parsedRetentionCount >= 1 && parsedRetentionCount <= 50
       ? parsedRetentionCount
       : SETTINGS_DEFAULTS.backupRetentionCount;
+    const parsedAutoLockMinutes = Number(findSettingValue(settings, SETTINGS_KEYS.sessionAutoLockMinutes));
+    const sessionAutoLockMinutes = Number.isInteger(parsedAutoLockMinutes) && parsedAutoLockMinutes >= 1 && parsedAutoLockMinutes <= 240
+      ? parsedAutoLockMinutes
+      : SETTINGS_DEFAULTS.sessionAutoLockMinutes;
 
     const backupPassphraseEnc = findSettingValue(settings, SETTINGS_KEYS.backupPassphraseEnc);
 
@@ -58,6 +62,8 @@ export const getSettings = async (req, res, next) => {
       backupIntervalDays,
       backupRetentionCount,
       lastBackupAt: findSettingValue(settings, SETTINGS_KEYS.lastBackupAt) || SETTINGS_DEFAULTS.lastBackupAt,
+      sessionAutoLockEnabled: Boolean(findSettingValue(settings, SETTINGS_KEYS.sessionAutoLockEnabled) ?? SETTINGS_DEFAULTS.sessionAutoLockEnabled),
+      sessionAutoLockMinutes,
       backupDirectory: findSettingValue(settings, SETTINGS_KEYS.backupDirectory) || process.env.BACKUP_DIRECTORY || SETTINGS_DEFAULTS.backupDirectory,
       backupPassphraseConfigured: Boolean(backupPassphraseEnc),
       backupPassphraseSetAt: findSettingValue(settings, SETTINGS_KEYS.backupPassphraseSetAt) || SETTINGS_DEFAULTS.backupPassphraseSetAt
@@ -186,6 +192,34 @@ export const updateBackupSettings = async (req, res, next) => {
     ]);
 
     res.status(200).json({ backupEnabled, backupIntervalDays, backupRetentionCount, backupDirectory });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSecuritySettings = async (req, res, next) => {
+  try {
+    const sessionAutoLockEnabled = Boolean(req.body?.sessionAutoLockEnabled);
+    const sessionAutoLockMinutes = Number(req.body?.sessionAutoLockMinutes);
+
+    if (!Number.isInteger(sessionAutoLockMinutes) || sessionAutoLockMinutes < 1 || sessionAutoLockMinutes > 240) {
+      throw badRequestError("sessionAutoLockMinutes must be between 1 and 240");
+    }
+
+    await Promise.all([
+      Setting.findOneAndUpdate(
+        { key: SETTINGS_KEYS.sessionAutoLockEnabled },
+        { key: SETTINGS_KEYS.sessionAutoLockEnabled, value: sessionAutoLockEnabled },
+        { upsert: true, new: true }
+      ),
+      Setting.findOneAndUpdate(
+        { key: SETTINGS_KEYS.sessionAutoLockMinutes },
+        { key: SETTINGS_KEYS.sessionAutoLockMinutes, value: sessionAutoLockMinutes },
+        { upsert: true, new: true }
+      )
+    ]);
+
+    res.status(200).json({ sessionAutoLockEnabled, sessionAutoLockMinutes });
   } catch (error) {
     next(error);
   }

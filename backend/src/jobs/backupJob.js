@@ -1,5 +1,6 @@
 import { createBackup, getBackupSettings } from "../modules/backup/backup.service.js";
 import { decryptAutoBackupPassphraseForJob } from "../modules/settings/settings.controller.js";
+import { logEvent } from "../services/auditLog.service.js";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -35,9 +36,11 @@ const runBackupCheck = async () => {
       return;
     }
 
-    await createBackup(passphrase, "scheduled");
+    const result = await createBackup(passphrase, "scheduled");
+    await logEvent("BACKUP_CREATED_SCHEDULED", null, { filename: result.filename });
     console.info("Scheduled backup completed successfully");
   } catch (error) {
+    await logEvent("BACKUP_CREATE_FAIL", null, { mode: "scheduled", reason: error.message });
     console.error("Scheduled backup failed:", error.message);
   }
 };

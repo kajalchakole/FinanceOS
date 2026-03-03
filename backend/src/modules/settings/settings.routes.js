@@ -8,6 +8,7 @@ import {
   updateFDInterval,
   updateNPSInterval,
   updatePPFInterval,
+  updateSecuritySettings,
   upsertAutoBackupPassphrase
 } from "./settings.controller.js";
 
@@ -19,6 +20,7 @@ settingsRouter.patch("/epf-interval", updateEPFInterval);
 settingsRouter.patch("/nps-interval", updateNPSInterval);
 settingsRouter.patch("/ppf-interval", updatePPFInterval);
 settingsRouter.patch("/backup", updateBackupSettings);
+settingsRouter.patch("/security", updateSecuritySettings);
 settingsRouter.put("/backup/passphrase", upsertAutoBackupPassphrase);
 settingsRouter.delete("/backup/passphrase", clearAutoBackupPassphrase);
 
