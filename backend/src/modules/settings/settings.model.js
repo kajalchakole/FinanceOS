@@ -9,6 +9,8 @@ export const SETTINGS_KEYS = {
   backupIntervalDays: "backupIntervalDays",
   backupRetentionCount: "backupRetentionCount",
   lastBackupAt: "lastBackupAt",
+  sessionAutoLockEnabled: "sessionAutoLockEnabled",
+  sessionAutoLockMinutes: "sessionAutoLockMinutes",
   backupDirectory: "backupDirectory",
   backupPassphraseEnc: "backupPassphraseEnc",
   backupPassphraseSetAt: "backupPassphraseSetAt"
@@ -23,6 +25,8 @@ export const SETTINGS_DEFAULTS = {
   backupIntervalDays: 7,
   backupRetentionCount: 10,
   lastBackupAt: null,
+  sessionAutoLockEnabled: true,
+  sessionAutoLockMinutes: 10,
   backupDirectory: "data/backups",
   backupPassphraseEnc: null,
   backupPassphraseSetAt: null

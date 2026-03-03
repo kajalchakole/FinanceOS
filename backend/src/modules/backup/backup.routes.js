@@ -4,6 +4,7 @@ import multer from "multer";
 import {
   createManualBackup,
   downloadLatestBackup,
+  getBackupStatus,
   getLatestBackup,
   restoreFromBackupFile
 } from "./backup.controller.js";
@@ -18,6 +19,7 @@ const upload = multer({
 const backupRouter = Router();
 
 backupRouter.post("/", createManualBackup);
+backupRouter.get("/status", getBackupStatus);
 backupRouter.get("/latest", getLatestBackup);
 backupRouter.get("/download/latest", downloadLatestBackup);
 backupRouter.post("/restore", upload.single("file"), restoreFromBackupFile);

@@ -1,15 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import MetricCard from "../components/MetricCard";
+import { useBackupStatus } from "../hooks/useBackupStatus";
 import api from "../services/api";
 
 function PortfolioPage() {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [instrumentSort, setInstrumentSort] = useState({ key: "value", direction: "desc" });
   const [brokerSort, setBrokerSort] = useState({ key: "value", direction: "desc" });
   const [topHoldingSort, setTopHoldingSort] = useState({ key: "value", direction: "desc" });
+  const { health, lastBackupText } = useBackupStatus();
 
   const fetchSummary = async () => {
     const response = await api.get("/portfolio/summary");
@@ -126,7 +130,25 @@ function PortfolioPage() {
       <div>
         <h2 className="text-2xl font-semibold tracking-tight text-brand-text">Portfolio Intelligence</h2>
         <p className="mt-1 text-sm text-brand-muted">Allocation drilldown across brokers, types, and top positions.</p>
+        <p className="mt-2 text-xs text-brand-muted">{lastBackupText}</p>
       </div>
+
+      {health ? (
+        <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+          health.severity === "critical"
+            ? "border-rose-300 bg-rose-50 text-rose-700"
+            : "border-amber-300 bg-amber-50 text-amber-700"
+        }`}>
+          <p>{health.severity === "critical" ? "Critical: " : "Warning: "}{health.message}</p>
+          <button
+            type="button"
+            className="mt-2 rounded-lg border border-current px-3 py-1 text-xs font-semibold"
+            onClick={() => navigate("/settings")}
+          >
+            Backup Now
+          </button>
+        </div>
+      ) : null}
 
       {isLoading ? <p className="mt-8 text-sm text-brand-muted">Loading portfolio summary...</p> : null}
       {error ? <p className="mt-8 text-sm font-medium text-rose-600">{error}</p> : null}

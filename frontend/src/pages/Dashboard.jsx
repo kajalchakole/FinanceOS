@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { usePortfolio } from "../context/PortfolioContext";
+import { useBackupStatus } from "../hooks/useBackupStatus";
 import api from "../services/api";
 
 function DashboardPage() {
@@ -12,6 +13,7 @@ function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [reconnectToast, setReconnectToast] = useState("");
+  const { health, lastBackupText } = useBackupStatus();
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -135,7 +137,25 @@ function DashboardPage() {
           Consolidated portfolio readiness across active goals.
           {summary ? ` ${summary.goalCountIncluded} goals included.` : ""}
         </p>
+        <p className="mt-2 text-xs text-brand-muted">{lastBackupText}</p>
       </div>
+
+      {health ? (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${
+          health.severity === "critical"
+            ? "border-rose-300 bg-rose-50 text-rose-700"
+            : "border-amber-300 bg-amber-50 text-amber-700"
+        }`}>
+          <p>{health.severity === "critical" ? "Critical: " : "Warning: "}{health.message}</p>
+          <button
+            type="button"
+            className="mt-2 rounded-lg border border-current px-3 py-1 text-xs font-semibold"
+            onClick={() => navigate("/settings")}
+          >
+            Backup Now
+          </button>
+        </div>
+      ) : null}
 
       {isLoading ? <p className="text-sm text-brand-muted">Loading dashboard...</p> : null}
       {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}

@@ -7,6 +7,7 @@ const MODE_PIN = "pin";
 const MODE_PASSWORD = "password";
 const MODE_RECOVERY = "recovery";
 const MODE_RECOVERY_KEY = "recovery-key";
+const LOCKED_STORAGE_KEY = "financeos_locked";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -69,6 +70,8 @@ function AuthPage() {
     setSubmitting(true);
     try {
       await authApi.loginPin({ pin });
+      localStorage.removeItem(LOCKED_STORAGE_KEY);
+      window.dispatchEvent(new Event("financeos:unlock"));
       navigate("/portfolio", { replace: true });
     } catch (requestError) {
       setError(requestError?.response?.data?.message || "Invalid credentials");
@@ -92,6 +95,8 @@ function AuthPage() {
         ? { password }
         : { username: usernameInput.trim(), password };
       await authApi.loginPassword(payload);
+      localStorage.removeItem(LOCKED_STORAGE_KEY);
+      window.dispatchEvent(new Event("financeos:unlock"));
       navigate("/portfolio", { replace: true });
     } catch (requestError) {
       setError(requestError?.response?.data?.message || "Invalid credentials");

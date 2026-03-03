@@ -11,6 +11,7 @@ const links = [
   { label: "NPS", to: "/nps" },
   { label: "PPF", to: "/ppf" },
   { label: "Physical Commodity", to: "/physical-commodities" },
+  { label: "Security", to: "/security" },
   { label: "Settings", to: "/settings" }
 ];
 

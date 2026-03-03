@@ -12,6 +12,7 @@ import {
   verifySecret
 } from "./auth.service.js";
 import { generateRecoveryKey, normalizeRecoveryKey } from "./recoveryKey.service.js";
+import { logEvent } from "../../services/auditLog.service.js";
 
 const LOGIN_LOCK_MINUTES = 10;
 const RECOVERY_LOCK_MINUTES = 30;
@@ -20,15 +21,6 @@ const PASSWORD_MIN_LENGTH = 10;
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 30;
 const PIN_REGEX = /^[0-9]{4}$/;
-
-const logRecoveryAudit = (event, metadata = {}) => {
-  const payload = {
-    event,
-    timestamp: new Date().toISOString(),
-    ...metadata
-  };
-  console.info("[AUTH_AUDIT]", JSON.stringify(payload));
-};
 
 const badRequest = (message) => {
   const error = new Error(message);
@@ -57,12 +49,15 @@ const isValidUsername = (value) =>
 const incrementFailure = async (user) => {
   const nextCount = Number(user.failedLoginCount || 0) + 1;
   const updates = { failedLoginCount: nextCount };
+  let lockUntil = null;
 
   if (nextCount >= MAX_FAILED_ATTEMPTS) {
-    updates.lockUntil = new Date(Date.now() + LOGIN_LOCK_MINUTES * 60 * 1000);
+    lockUntil = new Date(Date.now() + LOGIN_LOCK_MINUTES * 60 * 1000);
+    updates.lockUntil = lockUntil;
   }
 
   await User.updateOne({ _id: user._id }, updates);
+  return { nextCount, lockUntil };
 };
 
 const clearLockState = async (userId) => {
@@ -192,16 +187,22 @@ export const loginPassword = async (req, res, next) => {
       ? await User.findOne({ username })
       : await User.findOne({});
     if (!user) {
+      await logEvent("LOGIN_PASSWORD_FAIL", req, { reason: "USER_NOT_FOUND" });
       throw unauthorized("Invalid credentials");
     }
 
     if (isLocked(user)) {
+      await logEvent("AUTH_LOCKED", req, { username: user.username, lockUntil: user.lockUntil?.toISOString() });
       throw tooMany("Locked, try later");
     }
 
     const passwordMatches = await verifySecret(password, user.passwordHash);
     if (!passwordMatches) {
-      await incrementFailure(user);
+      const failureState = await incrementFailure(user);
+      await logEvent("LOGIN_PASSWORD_FAIL", req, { username: user.username });
+      if (failureState.lockUntil) {
+        await logEvent("AUTH_LOCKED", req, { username: user.username, lockUntil: failureState.lockUntil.toISOString() });
+      }
       throw unauthorized("Invalid credentials");
     }
 
@@ -210,6 +211,7 @@ export const loginPassword = async (req, res, next) => {
 
     setSessionCookies(res, tokens);
     setPinCookie(res);
+    await logEvent("LOGIN_PASSWORD_SUCCESS", req, { username: user.username });
 
     return res.status(200).json({
       ok: true,
@@ -229,16 +231,22 @@ export const loginPin = async (req, res, next) => {
 
     const user = await User.findOne({});
     if (!user) {
+      await logEvent("LOGIN_PIN_FAIL", req, { reason: "USER_NOT_FOUND" });
       throw unauthorized("Invalid credentials");
     }
 
     if (isLocked(user)) {
+      await logEvent("AUTH_LOCKED", req, { username: user.username, lockUntil: user.lockUntil?.toISOString() });
       throw tooMany("Locked, try later");
     }
 
     const pinMatches = await verifySecret(pin, user.pinHash);
     if (!pinMatches) {
-      await incrementFailure(user);
+      const failureState = await incrementFailure(user);
+      await logEvent("LOGIN_PIN_FAIL", req, { username: user.username });
+      if (failureState.lockUntil) {
+        await logEvent("AUTH_LOCKED", req, { username: user.username, lockUntil: failureState.lockUntil.toISOString() });
+      }
       throw unauthorized("Invalid credentials");
     }
 
@@ -247,6 +255,7 @@ export const loginPin = async (req, res, next) => {
 
     setSessionCookies(res, tokens);
     setPinCookie(res);
+    await logEvent("LOGIN_PIN_SUCCESS", req, { username: user.username });
 
     return res.status(200).json({
       ok: true,
@@ -262,6 +271,7 @@ export const login = loginPassword;
 export const logout = async (req, res, next) => {
   try {
     clearAuthCookies(res);
+    await logEvent("LOGOUT", req);
     return res.status(200).json({ ok: true });
   } catch (error) {
     return next(error);
@@ -339,21 +349,24 @@ export const recoverAccount = async (req, res, next) => {
 
     const user = await User.findOne({});
     if (!user) {
+      await logEvent("RECOVERY_FAIL", req, { reason: "USER_NOT_FOUND" });
       throw unauthorized("Invalid recovery key");
     }
 
     if (!user.recoveryKeyHash) {
+      await logEvent("RECOVERY_FAIL", req, { username: user.username, reason: "RECOVERY_NOT_SET" });
       throw badRequest("Recovery key not set");
     }
 
     if (isRecoveryLocked(user)) {
+      await logEvent("RECOVERY_FAIL", req, { username: user.username, reason: "LOCKED" });
       throw tooMany("Locked, try later");
     }
 
     const isMatch = await verifySecret(recoveryKeyInput, user.recoveryKeyHash);
     if (!isMatch) {
       await incrementRecoveryFailure(user);
-      logRecoveryAudit("RECOVERY_ATTEMPT_FAIL", { userId: String(user._id) });
+      await logEvent("RECOVERY_FAIL", req, { username: user.username });
       throw unauthorized("Invalid recovery key");
     }
 
@@ -380,7 +393,7 @@ export const recoverAccount = async (req, res, next) => {
 
     clearAuthCookies(res);
     await clearRecoveryLockState(user._id);
-    logRecoveryAudit("RECOVERY_ATTEMPT_SUCCESS", { userId: String(user._id) });
+    await logEvent("RECOVERY_SUCCESS", req, { username: user.username });
 
     return res.status(200).json({
       ok: true,

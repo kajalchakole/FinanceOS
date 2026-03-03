@@ -18,6 +18,7 @@ import ppfRouter from "./modules/ppf/ppf.routes.js";
 import physicalCommodityRouter from "./modules/physicalCommodities/physicalCommodity.routes.js";
 import settingsRouter from "./modules/settings/settings.routes.js";
 import backupRouter from "./modules/backup/backup.routes.js";
+import auditLogRouter from "./modules/auditLogs/auditLog.routes.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 
@@ -56,6 +57,7 @@ app.use("/api/ppf", ppfRouter);
 app.use("/api/physical-commodities", physicalCommodityRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/backup", backupRouter);
+app.use("/api/audit-logs", auditLogRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
