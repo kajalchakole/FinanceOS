@@ -12,6 +12,14 @@ const HEADER_VARIANTS = {
   folioNumber: ["folio", "folio number"]
 };
 
+const ICICI_MF_HEADER_VARIANTS = {
+  schemeName: ["scheme name", "fund name", "scheme"],
+  units: ["units", "quantity"],
+  nav: ["nav", "current nav"],
+  folio: ["folio", "folio number"],
+  avgCost: ["avg cost", "average cost", "purchase nav"]
+};
+
 const cleanHeader = (value) => String(value || "").trim().toLowerCase();
 
 const isHeaderMatch = (cell, variant) => {
@@ -39,6 +47,66 @@ const toNumericValue = (rawValue) => {
 
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const findColumnByAliases = (headers, aliases) => {
+  const normalizedHeaders = headers.reduce((accumulator, header) => {
+    accumulator[cleanHeader(header)] = header;
+    return accumulator;
+  }, {});
+  const normalizedHeaderKeys = Object.keys(normalizedHeaders);
+
+  const matchedKey = aliases
+    .map((alias) => cleanHeader(alias))
+    .map((alias) => normalizedHeaderKeys.find((headerKey) => isHeaderMatch(headerKey, alias)))
+    .find(Boolean);
+
+  return matchedKey ? normalizedHeaders[matchedKey] : null;
+};
+
+const findPreferredColumnByAliases = (headers, aliases, options = {}) => {
+  const normalizedAliases = aliases.map((alias) => cleanHeader(alias));
+  const excludedTokens = Array.isArray(options.excludeTokens)
+    ? options.excludeTokens.map((token) => cleanHeader(token))
+    : [];
+
+  const candidates = headers
+    .map((header) => ({
+      header,
+      normalized: cleanHeader(header)
+    }))
+    .filter((candidate) => candidate.normalized)
+    .filter((candidate) => !excludedTokens.some((token) => candidate.normalized.includes(token)))
+    .map((candidate) => {
+      const score = normalizedAliases.reduce((bestScore, alias) => {
+        if (!alias || !isHeaderMatch(candidate.normalized, alias)) {
+          return bestScore;
+        }
+
+        if (candidate.normalized === alias) {
+          return Math.max(bestScore, 100);
+        }
+
+        if (candidate.normalized.endsWith(alias)) {
+          return Math.max(bestScore, 90);
+        }
+
+        if (candidate.normalized.startsWith(alias)) {
+          return Math.max(bestScore, 80);
+        }
+
+        return Math.max(bestScore, 70);
+      }, 0);
+
+      return {
+        ...candidate,
+        score
+      };
+    })
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.header || null;
 };
 
 const getColumnMap = (headers) => {
@@ -202,6 +270,8 @@ export const parseGrowwFileRows = (file) => {
   throw new Error(`Unsupported file type: ${file.originalname}`);
 };
 
+export const parseTabularFileRows = (file) => parseGrowwFileRows(file);
+
 export const normalizeGrowwRows = (rows, filename) => {
   const headers = rows[0] ? Object.keys(rows[0]) : [];
   const columnMap = getColumnMap(headers);
@@ -269,5 +339,49 @@ export const normalizeGrowwRows = (rows, filename) => {
     holdings,
     warnings,
     skippedCount
+  };
+};
+
+export const normalizeIciciMfRows = (rows = []) => {
+  const headers = rows[0] ? Object.keys(rows[0]) : [];
+
+  const schemeColumn = findColumnByAliases(headers, ICICI_MF_HEADER_VARIANTS.schemeName);
+  const unitsColumn = findColumnByAliases(headers, ICICI_MF_HEADER_VARIANTS.units);
+  const navColumn = findPreferredColumnByAliases(headers, ICICI_MF_HEADER_VARIANTS.nav, {
+    excludeTokens: ["nav on", "as on", "date", "recorded on"]
+  });
+  const folioColumn = findColumnByAliases(headers, ICICI_MF_HEADER_VARIANTS.folio);
+  const avgCostColumn = findColumnByAliases(headers, ICICI_MF_HEADER_VARIANTS.avgCost);
+
+  const holdings = [];
+  let skippedRows = 0;
+
+  rows.forEach((row) => {
+    const schemeName = String(row[schemeColumn] || "").trim();
+    const quantity = toNumericValue(row[unitsColumn]);
+    const nav = toNumericValue(row[navColumn]);
+    const avgCost = toNumericValue(row[avgCostColumn]);
+    const folioValue = String(row[folioColumn] || "").trim();
+
+    if (!schemeName || quantity <= 0) {
+      skippedRows += 1;
+      return;
+    }
+
+    holdings.push({
+      broker: "icici_mf",
+      instrumentName: schemeName,
+      instrumentType: "Mutual Fund",
+      quantity,
+      averagePrice: avgCost || nav,
+      currentPrice: nav,
+      folioNumber: folioValue || null,
+      goalId: null
+    });
+  });
+
+  return {
+    holdings,
+    skippedRows
   };
 };

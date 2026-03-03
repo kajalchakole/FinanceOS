@@ -18,6 +18,7 @@ const unsupportedCallback = (broker) => {
 const manualSyncNoop = async () => 0;
 const growwSyncNoop = async () => 0;
 const indmoneySyncNoop = async () => 0;
+const iciciMfSyncNoop = async () => 0;
 
 export const getBrokerDisplayName = (brokerName) => {
   const normalized = String(brokerName || "").trim().toLowerCase();
@@ -66,5 +67,11 @@ export const brokerRegistry = {
     syncHoldings: indmoneySyncNoop,
     getConnectUrl: () => unsupportedConnect("indmoney"),
     handleCallback: async () => unsupportedCallback("indmoney")
+  },
+  icici_mf: {
+    displayName: "ICICI Direct (Mutual Funds)",
+    syncHoldings: iciciMfSyncNoop,
+    getConnectUrl: () => unsupportedConnect("icici_mf"),
+    handleCallback: async () => unsupportedCallback("icici_mf")
   }
 };
