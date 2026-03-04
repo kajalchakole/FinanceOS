@@ -68,8 +68,12 @@ function GoalsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingGoalId, setDeletingGoalId] = useState("");
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [goalPendingDelete, setGoalPendingDelete] = useState(null);
   const [deleteModalError, setDeleteModalError] = useState("");
+  const [bulkDeleteError, setBulkDeleteError] = useState("");
+  const [selectedGoalIds, setSelectedGoalIds] = useState([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "name",
     direction: "asc"
@@ -206,6 +210,11 @@ function GoalsPage() {
     window.localStorage.setItem(GOALS_VIEW_MODE_STORAGE_KEY, viewMode);
   }, [viewMode]);
 
+  useEffect(() => {
+    const goalIdSet = new Set(goals.map((goal) => goal._id));
+    setSelectedGoalIds((current) => current.filter((goalId) => goalIdSet.has(goalId)));
+  }, [goals]);
+
   const sortedGoals = useMemo(() => {
     const sorted = [...goals];
 
@@ -289,6 +298,80 @@ function GoalsPage() {
   };
 
   const getSortIndicator = (key) => (sortConfig.key === key ? (sortConfig.direction === "asc" ? " ▲" : " ▼") : "");
+  const selectedGoalIdSet = useMemo(() => new Set(selectedGoalIds), [selectedGoalIds]);
+  const allGridGoalsSelected = sortedGoals.length > 0 && sortedGoals.every((goal) => selectedGoalIdSet.has(goal._id));
+  const hasSelectedGoals = selectedGoalIds.length > 0;
+
+  const toggleGoalSelection = (goalId) => {
+    setSelectedGoalIds((current) => (
+      current.includes(goalId)
+        ? current.filter((id) => id !== goalId)
+        : [...current, goalId]
+    ));
+  };
+
+  const toggleSelectAllGridGoals = () => {
+    setSelectedGoalIds((current) => {
+      if (allGridGoalsSelected) {
+        const visibleGoalIdSet = new Set(sortedGoals.map((goal) => goal._id));
+        return current.filter((id) => !visibleGoalIdSet.has(id));
+      }
+
+      const merged = new Set(current);
+      sortedGoals.forEach((goal) => merged.add(goal._id));
+      return [...merged];
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!hasSelectedGoals || isBulkDeleting) {
+      return;
+    }
+
+    setError("");
+    setBulkDeleteError("");
+    setIsBulkDeleting(true);
+
+    try {
+      const deleteResults = await Promise.allSettled(
+        selectedGoalIds.map((goalId) => api.delete(`/goals/${goalId}`))
+      );
+
+      const successfulGoalIdSet = new Set();
+      let failedCount = 0;
+
+      deleteResults.forEach((result, index) => {
+        const goalId = selectedGoalIds[index];
+        if (result.status === "fulfilled") {
+          successfulGoalIdSet.add(goalId);
+          return;
+        }
+        failedCount += 1;
+      });
+
+      if (successfulGoalIdSet.size > 0) {
+        setGoals((currentGoals) => currentGoals.filter((goal) => !successfulGoalIdSet.has(goal._id)));
+      }
+
+      setSelectedGoalIds((current) => current.filter((goalId) => !successfulGoalIdSet.has(goalId)));
+
+      if (failedCount > 0) {
+        const message = failedCount === 1
+          ? "Unable to delete 1 selected goal"
+          : `Unable to delete ${failedCount} selected goals`;
+        setError(message);
+        setBulkDeleteError(message);
+      } else {
+        setIsBulkDeleteModalOpen(false);
+      }
+    } catch (requestError) {
+      const message = requestError.response?.data?.message || "Unable to delete selected goals";
+      setError(message);
+      setBulkDeleteError(message);
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   return (
     <section className="space-y-8">
@@ -299,6 +382,23 @@ function GoalsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {viewMode === "grid" ? (
+            <>
+              {hasSelectedGoals ? (
+                <>
+                  <p className="text-sm text-brand-muted">{selectedGoalIds.length} selected</p>
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkDeleteModalOpen(true)}
+                    disabled={isBulkDeleting}
+                    className="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isBulkDeleting ? "Deleting..." : "Delete"}
+                  </button>
+                </>
+              ) : null}
+            </>
+          ) : null}
           <div className="inline-flex items-center rounded-xl border border-brand-line bg-white p-1">
             <button
               type="button"
@@ -359,6 +459,14 @@ function GoalsPage() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-5 py-3 font-semibold text-brand-text">
+                    <input
+                      type="checkbox"
+                      checked={allGridGoalsSelected}
+                      onChange={toggleSelectAllGridGoals}
+                      aria-label="Select all goals"
+                    />
+                  </th>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
                     <button type="button" onClick={() => handleSort("name")} className="font-semibold">Goal{getSortIndicator("name")}</button>
                   </th>
                   <th className="px-5 py-3 font-semibold text-brand-text">
@@ -389,6 +497,14 @@ function GoalsPage() {
 
                   return (
                     <tr key={goal._id}>
+                      <td className="px-5 py-3 text-brand-muted">
+                        <input
+                          type="checkbox"
+                          checked={selectedGoalIdSet.has(goal._id)}
+                          onChange={() => toggleGoalSelection(goal._id)}
+                          aria-label={`Select ${goal.name}`}
+                        />
+                      </td>
                       <td className="px-5 py-3 text-brand-text">
                         <Link to={`/goals/${goal._id}`} className="font-medium transition hover:text-slate-700">
                           {goal.name}
@@ -481,6 +597,54 @@ function GoalsPage() {
                 className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {deletingGoalId === goalPendingDelete._id ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isBulkDeleteModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !isBulkDeleting) {
+              setIsBulkDeleteModalOpen(false);
+              setBulkDeleteError("");
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-delete-goal-title"
+            className="w-full max-w-md rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft"
+          >
+            <h3 id="bulk-delete-goal-title" className="text-lg font-semibold tracking-tight text-brand-text">Delete Selected Goals</h3>
+            <p className="mt-2 text-sm text-brand-muted">
+              Are you sure you want to delete {selectedGoalIds.length} selected goals? This action cannot be undone.
+            </p>
+
+            {bulkDeleteError ? <p className="mt-3 text-sm font-medium text-rose-600">{bulkDeleteError}</p> : null}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulkDeleteModalOpen(false);
+                  setBulkDeleteError("");
+                }}
+                disabled={isBulkDeleting}
+                className="rounded-xl border border-brand-line px-4 py-2 text-sm font-semibold text-brand-muted transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting || !hasSelectedGoals}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isBulkDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
