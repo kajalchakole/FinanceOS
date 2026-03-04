@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import AmountHint from "../components/AmountHint";
 import api from "../services/api";
 
 const initialFormState = {
@@ -181,6 +182,7 @@ function CreateGoalPage() {
                 className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
                 placeholder="1000000"
               />
+              <AmountHint value={formData.presentValue} />
             </label>
 
             <label className="space-y-2">
@@ -207,6 +209,7 @@ function CreateGoalPage() {
                 className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
                 placeholder="0"
               />
+              <AmountHint value={formData.initialInvestment} />
             </label>
 
             <label className="space-y-2">
@@ -233,6 +236,7 @@ function CreateGoalPage() {
                 className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
                 placeholder="0"
               />
+              <AmountHint value={formData.monthlySIP} />
             </label>
 
             <label className="space-y-2">

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+import AmountHint from "../components/AmountHint";
 import ConfirmationModal from "../components/ConfirmationModal";
 import api from "../services/api";
 
@@ -212,6 +213,7 @@ function LiabilitiesPage() {
               <label className="flex flex-col gap-1.5 text-sm font-medium text-brand-text">
                 Principal Amount
                 <input name="principalAmount" type="number" value={formData.principalAmount} onChange={handleInputChange} required placeholder="e.g. 2500000" className="rounded-xl border border-brand-line px-3 py-2 text-sm font-normal" />
+                <AmountHint value={formData.principalAmount} />
               </label>
               <label className="flex flex-col gap-1.5 text-sm font-medium text-brand-text">
                 Interest Rate (% per year)
@@ -220,6 +222,7 @@ function LiabilitiesPage() {
               <label className="flex flex-col gap-1.5 text-sm font-medium text-brand-text">
                 EMI Amount
                 <input name="emiAmount" type="number" value={formData.emiAmount} onChange={handleInputChange} required placeholder="e.g. 28000" className="rounded-xl border border-brand-line px-3 py-2 text-sm font-normal" />
+                <AmountHint value={formData.emiAmount} />
               </label>
               <label className="flex flex-col gap-1.5 text-sm font-medium text-brand-text">
                 Start Date
@@ -238,6 +241,7 @@ function LiabilitiesPage() {
               <label className="flex flex-col gap-1.5 text-sm font-medium text-brand-text">
                 Manual Outstanding Override (Optional)
                 <input name="manualOutstandingOverride" type="number" value={formData.manualOutstandingOverride} onChange={handleInputChange} placeholder="Leave blank to auto-compute" className="rounded-xl border border-brand-line px-3 py-2 text-sm font-normal" />
+                <AmountHint value={formData.manualOutstandingOverride} />
               </label>
               <label className="sm:col-span-2 flex flex-col gap-1.5 text-sm font-medium text-brand-text">
                 Notes

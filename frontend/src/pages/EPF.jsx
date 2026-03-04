@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 
+import AmountHint from "../components/AmountHint";
 import api from "../services/api";
 
 const initialFormData = {
@@ -334,6 +335,7 @@ function EPFPage() {
                   value={formData.openingBalance}
                   onChange={handleInputChange}
                 />
+                <AmountHint value={formData.openingBalance} />
               </label>
               <label className="block space-y-1 text-sm text-brand-text">
                 <span className="font-medium">Opening Balance As Of</span>
@@ -356,6 +358,7 @@ function EPFPage() {
                   value={formData.monthlyContribution}
                   onChange={handleInputChange}
                 />
+                <AmountHint value={formData.monthlyContribution} />
               </label>
               <label className="block space-y-1 text-sm text-brand-text">
                 <span className="font-medium">Annual Interest Rate (%)</span>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 
+import AmountHint from "../components/AmountHint";
 import api from "../services/api";
 
 const initialFormData = {
@@ -31,6 +32,9 @@ function FixedDepositsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [selectedFDIds, setSelectedFDIds] = useState([]);
+  const [bulkGoalId, setBulkGoalId] = useState("");
+  const [isBulkAssigningGoal, setIsBulkAssigningGoal] = useState(false);
   const [formData, setFormData] = useState(initialFormData);
   const [editData, setEditData] = useState({
     interestRate: "",
@@ -103,6 +107,11 @@ function FixedDepositsPage() {
 
     loadFixedDeposits();
   }, []);
+
+  useEffect(() => {
+    const validIds = new Set(fixedDeposits.map((fd) => fd._id));
+    setSelectedFDIds((current) => current.filter((fdId) => validIds.has(fdId)));
+  }, [fixedDeposits]);
 
   const handleInputChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -279,6 +288,57 @@ function FixedDepositsPage() {
     }
   };
 
+  const allSelected = fixedDeposits.length > 0 && fixedDeposits.every((fd) => selectedFDIds.includes(fd._id));
+
+  const toggleFDSelection = (fdId) => {
+    setSelectedFDIds((current) => (
+      current.includes(fdId) ? current.filter((id) => id !== fdId) : [...current, fdId]
+    ));
+  };
+
+  const toggleSelectAllFDs = () => {
+    if (allSelected) {
+      setSelectedFDIds([]);
+      return;
+    }
+
+    setSelectedFDIds(fixedDeposits.map((fd) => fd._id));
+  };
+
+  const handleBulkGoalAssign = async () => {
+    if (selectedFDIds.length === 0 || isBulkAssigningGoal) {
+      return;
+    }
+
+    setSuccessMessage("");
+    setError("");
+    setIsBulkAssigningGoal(true);
+
+    try {
+      const results = await Promise.allSettled(
+        selectedFDIds.map((fdId) => api.patch(`/fixed-deposits/${fdId}`, { goalId: bulkGoalId || null }))
+      );
+
+      const failedCount = results.filter((result) => result.status === "rejected").length;
+      await fetchFixedDeposits();
+
+      if (failedCount > 0) {
+        setError(
+          failedCount === 1
+            ? "1 fixed deposit could not be updated."
+            : `${failedCount} fixed deposits could not be updated.`
+        );
+      } else {
+        setSuccessMessage("Goal allocation updated for selected fixed deposits.");
+        setSelectedFDIds([]);
+      }
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to update selected fixed deposits");
+    } finally {
+      setIsBulkAssigningGoal(false);
+    }
+  };
+
   const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString("en-IN", {
     maximumFractionDigits: 2
   })}`;
@@ -367,6 +427,7 @@ function FixedDepositsPage() {
               <label className="space-y-2 text-sm text-brand-text">
                 <span>Principal *</span>
                 <input type="number" min="0" step="0.01" name="principal" value={formData.principal} onChange={handleInputChange} required className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400" />
+                <AmountHint value={formData.principal} />
               </label>
               <label className="space-y-2 text-sm text-brand-text">
                 <span>Interest Rate (%) *</span>
@@ -446,8 +507,31 @@ function FixedDepositsPage() {
       </article>
 
       <article className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
-        <div className="border-b border-brand-line px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-line px-5 py-4">
           <h3 className="text-lg font-semibold tracking-tight text-brand-text">Fixed Deposit List</h3>
+          {selectedFDIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-brand-muted">{selectedFDIds.length} selected</span>
+              <select
+                value={bulkGoalId}
+                onChange={(event) => setBulkGoalId(event.target.value)}
+                className="rounded-lg border border-brand-line bg-white px-2.5 py-1.5 text-xs text-brand-text outline-none ring-0 focus:border-slate-400"
+              >
+                <option value="">Unassigned</option>
+                {goals.map((goal) => (
+                  <option key={goal._id} value={goal._id}>{goal.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleBulkGoalAssign}
+                disabled={isBulkAssigningGoal}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                {isBulkAssigningGoal ? "Applying..." : "Apply Goal"}
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {isLoading ? <p className="px-5 py-4 text-sm text-brand-muted">Loading fixed deposits...</p> : null}
@@ -457,6 +541,14 @@ function FixedDepositsPage() {
             <table className="fo-table">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-5 py-3 font-semibold text-brand-text">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all fixed deposits"
+                      checked={allSelected}
+                      onChange={toggleSelectAllFDs}
+                    />
+                  </th>
                   <th className="px-5 py-3 font-semibold text-brand-text">Bank</th>
                   <th className="px-5 py-3 font-semibold text-brand-text">FD Name</th>
                   <th className="px-5 py-3 font-semibold text-brand-text">Principal</th>
@@ -472,7 +564,7 @@ function FixedDepositsPage() {
               <tbody className="fo-table-body">
                 {fixedDeposits.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-5 py-6 text-center text-sm text-brand-muted">
+                    <td colSpan={11} className="px-5 py-6 text-center text-sm text-brand-muted">
                       No fixed deposits found.
                     </td>
                   </tr>
@@ -481,6 +573,14 @@ function FixedDepositsPage() {
                     key={deposit._id}
                     className={isMaturingSoon(deposit.maturityDate) && deposit.status === "active" ? "bg-yellow-50 border-l-4 border-yellow-400" : ""}
                   >
+                    <td className="px-5 py-3 text-brand-muted">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${deposit.fdName}`}
+                        checked={selectedFDIds.includes(deposit._id)}
+                        onChange={() => toggleFDSelection(deposit._id)}
+                      />
+                    </td>
                     <td className="px-5 py-3 text-brand-text">{deposit.bank}</td>
                     <td className="px-5 py-3 text-brand-text">{deposit.fdName}</td>
                     <td className="px-5 py-3 text-brand-muted">{formatCurrency(deposit.principal)}</td>

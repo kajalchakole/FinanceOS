@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import AmountHint from "../components/AmountHint";
 import api from "../services/api";
 
 const initialFormState = {
@@ -191,6 +192,7 @@ function AddHoldingPage() {
               className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
               placeholder="250.00"
             />
+            <AmountHint value={formData.averagePrice} />
           </label>
 
           <label className="space-y-2">
@@ -205,6 +207,7 @@ function AddHoldingPage() {
               className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
               placeholder="275.00"
             />
+            <AmountHint value={formData.currentPrice} />
           </label>
 
           <label className="space-y-2 md:col-span-2">

@@ -1,5 +1,7 @@
 import React from "react";
 
+import AmountHint from "./AmountHint";
+
 const initialFormData = {
   name: "",
   openingBalance: "",
@@ -48,6 +50,7 @@ function NpsModal({
               value={formData.openingBalance}
               onChange={onChange}
             />
+            <AmountHint value={formData.openingBalance} />
           </label>
           <label className="block space-y-1 text-sm text-brand-text">
             <span className="font-medium">Opening Balance As Of</span>
@@ -70,6 +73,7 @@ function NpsModal({
               value={formData.monthlyContribution}
               onChange={onChange}
             />
+            <AmountHint value={formData.monthlyContribution} />
           </label>
           <label className="block space-y-1 text-sm text-brand-text">
             <span className="font-medium">Expected Return (%)</span>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+import AmountHint from "../components/AmountHint";
 import ConfirmationModal from "../components/ConfirmationModal";
 import api from "../services/api";
 
@@ -339,6 +340,7 @@ function CashAccountsPage() {
                     className="mt-1 w-full rounded-xl border border-brand-line px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     required
                   />
+                  <AmountHint value={formData.balance} />
                 </label>
 
                 <label className="block text-sm font-medium text-brand-text">

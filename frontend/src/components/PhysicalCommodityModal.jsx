@@ -1,5 +1,7 @@
 import React from "react";
 
+import AmountHint from "./AmountHint";
+
 const commodityTypes = ["Gold", "Silver"];
 const units = ["grams", "kg"];
 
@@ -100,6 +102,7 @@ function PhysicalCommodityModal({
                 required
                 className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
               />
+              <AmountHint value={formData.averageCostPerUnit} />
             </label>
 
             <label className="space-y-2 text-sm text-brand-text">
@@ -114,6 +117,7 @@ function PhysicalCommodityModal({
                 required
                 className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
               />
+              <AmountHint value={formData.currentPricePerUnit} />
             </label>
 
             <label className="space-y-2 text-sm text-brand-text">
