@@ -83,8 +83,21 @@ function PortfolioPage() {
 
   const heroCards = [
     {
+      label: "Total Assets",
+      value: formatCurrency(summary?.totalAssets ?? summary?.totalAssetsValue)
+    },
+    {
+      label: "Total Liabilities",
+      value: formatCurrency(summary?.totalLiabilities ?? summary?.totalLiabilitiesOutstanding)
+    },
+    {
       label: "Net Worth",
-      value: formatCurrency(summary?.netWorth)
+      value: formatCurrency(summary?.netWorth),
+      valueClassName: Number(summary?.netWorth || 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+    },
+    {
+      label: "Debt-to-Asset %",
+      value: formatPercent(summary?.debtToAssetRatioPct)
     },
     {
       label: "Total Invested",
@@ -159,7 +172,7 @@ function PortfolioPage() {
 
       {!isLoading && !error && summary ? (
         <>
-          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-6">
             {heroCards.map((card) => (
               <MetricCard key={card.label} variant="hero" {...card} />
             ))}

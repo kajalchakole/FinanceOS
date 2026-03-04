@@ -106,6 +106,26 @@ function DashboardPage() {
 
   const cards = [
     {
+      title: "Total Assets",
+      value: formatCurrency(summary?.totalAssets ?? summary?.totalAssetsValue)
+    },
+    {
+      title: "Total Liabilities",
+      value: formatCurrency(summary?.totalLiabilities ?? summary?.totalLiabilitiesOutstanding)
+    },
+    {
+      title: "Net Worth",
+      value: formatCurrency(summary?.netWorth),
+      valueClassName: Number(summary?.netWorth || 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+    },
+    {
+      title: "Debt-to-Asset %",
+      value: `${Number(summary?.debtToAssetRatioPct || 0).toFixed(2)}%`
+    }
+  ];
+
+  const planningCards = [
+    {
       title: "Total Future Required",
       value: formatCurrency(summary?.totalFutureRequired)
     },
@@ -162,6 +182,21 @@ function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
+          <article key={card.title} className="app-surface-card p-4 transition-all duration-200 ease-out hover:-translate-y-[2px] sm:p-6">
+            <p className="text-sm text-gray-500 dark:text-[#9CA3AF]">{card.title}</p>
+            <div className="mt-2 min-h-10">
+              {card.renderValue || (
+                <p className={`text-2xl font-semibold text-gray-900 dark:text-[#F3F4F6] ${card.valueClassName || ""}`}>
+                  {card.value}
+                </p>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {planningCards.map((card) => (
           <article key={card.title} className="app-surface-card p-4 transition-all duration-200 ease-out hover:-translate-y-[2px] sm:p-6">
             <p className="text-sm text-gray-500 dark:text-[#9CA3AF]">{card.title}</p>
             <div className="mt-2 min-h-10">

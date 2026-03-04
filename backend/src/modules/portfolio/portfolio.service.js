@@ -6,7 +6,9 @@ import PpfAccount from "../ppf/ppf.model.js";
 import PhysicalCommodity from "../physicalCommodities/physicalCommodity.model.js";
 import Goal from "../goals/goal.model.js";
 import CashAccount from "../../models/CashAccount.js";
+import Liability from "../../models/Liability.js";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
+import { computeLiability, round2 } from "../../utils/liabilityEngine.js";
 
 const getHoldingValue = (holding) => Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
 const getInvestedValue = (holding) => Number(holding.quantity || 0) * Number(holding.averagePrice || 0);
@@ -47,7 +49,7 @@ const buildGroupedAllocation = (holdings, keySelector, netWorth) => {
 export const getPortfolioSummary = async () => {
   const holdings = await Holding.find().lean();
 
-  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, cashAggregation, unlinkedCashAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf, activeFixedDeposits, activeEpfAccounts, activeNpsAccounts, activePpfAccounts, activeCommodities, activeCashAccounts] = await Promise.all([
+  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, cashAggregation, unlinkedCashAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf, activeFixedDeposits, activeEpfAccounts, activeNpsAccounts, activePpfAccounts, activeCommodities, activeCashAccounts, liabilities] = await Promise.all([
     FixedDeposit.aggregate([
       {
         $match: {
@@ -185,7 +187,8 @@ export const getPortfolioSummary = async () => {
       $or: [{ isActive: true }, { isActive: { $exists: false } }]
     }).lean(),
     PhysicalCommodity.find({ isActive: true }).lean(),
-    CashAccount.find().lean()
+    CashAccount.find().lean(),
+    Liability.find().lean()
   ]);
 
   const totalFDValue = fdAggregation.length > 0 ? Number(fdAggregation[0].total || 0) : 0;
@@ -208,9 +211,15 @@ export const getPortfolioSummary = async () => {
   }));
 
   const totalMarketValue = holdingsWithValue.reduce((sum, holding) => sum + holding.value, 0);
-  const netWorth = totalMarketValue + totalFDValue + totalEpfValue + totalNpsValue + totalPpfValue + totalCommodityValue + totalCashValue;
+  const totalAssets = totalMarketValue + totalFDValue + totalEpfValue + totalNpsValue + totalPpfValue + totalCommodityValue + totalCashValue;
+  const totalLiabilities = liabilities.reduce((sum, liability) => {
+    const computed = computeLiability(liability);
+    return sum + Number(computed.outstanding || 0);
+  }, 0);
+  const netWorth = totalAssets - totalLiabilities;
+  const debtToAssetRatioPct = getPercentage(totalLiabilities, Math.max(totalAssets, 1));
   const totalInvested = holdingsWithValue.reduce((sum, holding) => sum + holding.investedValue, 0);
-  const totalProfit = netWorth - totalInvested;
+  const totalProfit = totalAssets - totalInvested;
   const totalHoldings = holdingsWithValue.length;
 
   const allocation = {
@@ -242,7 +251,7 @@ export const getPortfolioSummary = async () => {
   const allocationByBroker = buildGroupedAllocation(
     holdingsWithValue,
     (holding) => holding.broker,
-    netWorth
+    totalAssets
   ).map((row) => ({
     ...row,
     displayName: getBrokerDisplayName(row.name)
@@ -251,14 +260,14 @@ export const getPortfolioSummary = async () => {
   const allocationByInstrumentType = buildGroupedAllocation(
     holdingsWithValue,
     (holding) => holding.instrumentType,
-    netWorth
+    totalAssets
   );
 
   if (totalFDValue > 0) {
     allocationByInstrumentType.push({
       name: "Fixed Deposits",
       value: totalFDValue,
-      percentOfNetWorth: getPercentage(totalFDValue, netWorth)
+      percentOfNetWorth: getPercentage(totalFDValue, totalAssets)
     });
   }
 
@@ -266,7 +275,7 @@ export const getPortfolioSummary = async () => {
     allocationByInstrumentType.push({
       name: "EPF",
       value: totalEpfValue,
-      percentOfNetWorth: getPercentage(totalEpfValue, netWorth)
+      percentOfNetWorth: getPercentage(totalEpfValue, totalAssets)
     });
   }
 
@@ -274,7 +283,7 @@ export const getPortfolioSummary = async () => {
     allocationByInstrumentType.push({
       name: "NPS",
       value: totalNpsValue,
-      percentOfNetWorth: getPercentage(totalNpsValue, netWorth)
+      percentOfNetWorth: getPercentage(totalNpsValue, totalAssets)
     });
   }
 
@@ -282,7 +291,7 @@ export const getPortfolioSummary = async () => {
     allocationByInstrumentType.push({
       name: "PPF",
       value: totalPpfValue,
-      percentOfNetWorth: getPercentage(totalPpfValue, netWorth)
+      percentOfNetWorth: getPercentage(totalPpfValue, totalAssets)
     });
   }
 
@@ -290,7 +299,7 @@ export const getPortfolioSummary = async () => {
     allocationByInstrumentType.push({
       name: "Physical Commodity",
       value: totalCommodityValue,
-      percentOfNetWorth: getPercentage(totalCommodityValue, netWorth)
+      percentOfNetWorth: getPercentage(totalCommodityValue, totalAssets)
     });
   }
 
@@ -298,7 +307,7 @@ export const getPortfolioSummary = async () => {
     allocationByInstrumentType.push({
       name: "Cash",
       value: totalCashValue,
-      percentOfNetWorth: getPercentage(totalCashValue, netWorth)
+      percentOfNetWorth: getPercentage(totalCashValue, totalAssets)
     });
   }
 
@@ -324,7 +333,7 @@ export const getPortfolioSummary = async () => {
       investedValue,
       profit,
       profitPercent: getProfitPercent(value, investedValue),
-      percentOfNetWorth: getPercentage(value, netWorth)
+      percentOfNetWorth: getPercentage(value, totalAssets)
     };
   });
 
@@ -346,7 +355,7 @@ export const getPortfolioSummary = async () => {
       investedValue,
       profit,
       profitPercent: getProfitPercent(value, investedValue),
-      percentOfNetWorth: getPercentage(value, netWorth)
+      percentOfNetWorth: getPercentage(value, totalAssets)
     };
   });
 
@@ -368,7 +377,7 @@ export const getPortfolioSummary = async () => {
       investedValue,
       profit,
       profitPercent: getProfitPercent(value, investedValue),
-      percentOfNetWorth: getPercentage(value, netWorth)
+      percentOfNetWorth: getPercentage(value, totalAssets)
     };
   });
 
@@ -390,7 +399,7 @@ export const getPortfolioSummary = async () => {
       investedValue,
       profit,
       profitPercent: getProfitPercent(value, investedValue),
-      percentOfNetWorth: getPercentage(value, netWorth)
+      percentOfNetWorth: getPercentage(value, totalAssets)
     };
   });
 
@@ -412,7 +421,7 @@ export const getPortfolioSummary = async () => {
       investedValue,
       profit,
       profitPercent: getProfitPercent(value, investedValue),
-      percentOfNetWorth: getPercentage(value, netWorth)
+      percentOfNetWorth: getPercentage(value, totalAssets)
     };
   });
 
@@ -437,7 +446,7 @@ export const getPortfolioSummary = async () => {
       investedValue,
       profit,
       profitPercent: getProfitPercent(value, investedValue),
-      percentOfNetWorth: getPercentage(value, netWorth)
+      percentOfNetWorth: getPercentage(value, totalAssets)
     };
   });
 
@@ -459,7 +468,7 @@ export const getPortfolioSummary = async () => {
       investedValue: value,
       profit: 0,
       profitPercent: 0,
-      percentOfNetWorth: getPercentage(value, netWorth)
+      percentOfNetWorth: getPercentage(value, totalAssets)
     };
   });
 
@@ -476,7 +485,12 @@ export const getPortfolioSummary = async () => {
     .slice(0, 5);
 
   return {
-    netWorth,
+    netWorth: round2(netWorth),
+    totalAssets: round2(totalAssets),
+    totalLiabilities: round2(totalLiabilities),
+    debtToAssetRatioPct: round2(debtToAssetRatioPct),
+    totalAssetsValue: round2(totalAssets),
+    totalLiabilitiesOutstanding: round2(totalLiabilities),
     totalMarketValue,
     totalFDValue,
     totalEpfValue,
@@ -490,9 +504,10 @@ export const getPortfolioSummary = async () => {
     totalProfitPercent: getPercentage(totalProfit, totalInvested),
     totalHoldings,
     unassignedValue,
-    unassignedPercent: getPercentage(unassignedValue, netWorth),
+    unassignedPercent: getPercentage(unassignedValue, totalAssets),
     allocationByBroker,
     allocationByInstrumentType,
     topHoldings
   };
 };
+
