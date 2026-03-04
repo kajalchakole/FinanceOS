@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import { corsOptions } from "./config/cors.js";
 
 import healthRouter from "./routes/health.routes.js";
 import authRouter from "./modules/auth/auth.routes.js";
@@ -24,18 +25,7 @@ import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js"
 
 const app = express();
 
-app.use(cors({
-  origin: (origin, callback) => {
-    const appBaseUrl = process.env.APP_BASE_URL;
-
-    if (!appBaseUrl || !origin || origin === appBaseUrl) {
-      return callback(null, true);
-    }
-
-    return callback(new Error("CORS origin not allowed"));
-  },
-  credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
