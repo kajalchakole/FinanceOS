@@ -21,6 +21,7 @@ import settingsRouter from "./modules/settings/settings.routes.js";
 import backupRouter from "./modules/backup/backup.routes.js";
 import auditLogRouter from "./modules/auditLogs/auditLog.routes.js";
 import cashAccountRouter from "./routes/cashAccounts.js";
+import liabilityRouter from "./routes/liabilities.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 
@@ -50,6 +51,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/audit-logs", auditLogRouter);
 app.use("/api/cash-accounts", cashAccountRouter);
+app.use("/api/liabilities", liabilityRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
