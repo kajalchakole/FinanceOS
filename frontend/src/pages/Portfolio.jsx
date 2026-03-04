@@ -122,6 +122,10 @@ function PortfolioPage() {
     {
       label: "Physical Commodity",
       value: formatCurrency(summary?.totalCommodityValue)
+    },
+    {
+      label: "Cash",
+      value: formatCurrency(summary?.totalCashValue)
     }
   ];
 
