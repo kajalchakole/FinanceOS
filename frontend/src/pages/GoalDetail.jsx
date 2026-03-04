@@ -10,6 +10,7 @@ function GoalDetailPage() {
   const [error, setError] = useState("");
   const [unlinkingHoldingId, setUnlinkingHoldingId] = useState("");
   const [unlinkingFDId, setUnlinkingFDId] = useState("");
+  const [unlinkingCashId, setUnlinkingCashId] = useState("");
 
   const fetchDetail = useCallback(async () => {
     const response = await api.get(`/goals/${id}/detail`);
@@ -65,6 +66,21 @@ function GoalDetailPage() {
     }
   };
 
+  const handleUnlinkCashAccount = async (cashId) => {
+    setError("");
+    setUnlinkingCashId(cashId);
+
+    try {
+      await api.put(`/cash-accounts/${cashId}`, { goalId: null });
+      await fetchDetail();
+      refreshDashboard();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to unlink cash account");
+    } finally {
+      setUnlinkingCashId("");
+    }
+  };
+
   const formatCurrency = (value, fractionDigits = 2) => `\u20B9${Number(value || 0).toLocaleString("en-IN", {
     maximumFractionDigits: fractionDigits
   })}`;
@@ -72,6 +88,7 @@ function GoalDetailPage() {
   const projection = detail?.projection || {};
   const linkedHoldings = detail?.linkedHoldings || [];
   const linkedFixedDeposits = detail?.linkedFixedDeposits || [];
+  const linkedCashAccounts = detail?.linkedCashAccounts || [];
   const totalAllocated = Number(detail?.totalAllocated || 0);
   const allocationPercent = Number(detail?.allocationPercent || 0);
   const normalizedAllocationPercent = Number.isFinite(allocationPercent) ? allocationPercent : 0;
@@ -79,6 +96,7 @@ function GoalDetailPage() {
   const npsContribution = Number(detail?.npsContribution || 0);
   const ppfContribution = Number(detail?.ppfContribution || 0);
   const commodityContribution = Number(detail?.commodityContribution || 0);
+  const cashContribution = Number(detail?.cashContribution || 0);
 
   const summaryItems = useMemo(() => ([
     {
@@ -162,10 +180,20 @@ function GoalDetailPage() {
                 <p className="text-xs uppercase tracking-wide text-brand-muted">Linked FDs</p>
                 <p className="mt-1 text-base font-semibold text-brand-text">{linkedFixedDeposits.length}</p>
               </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-brand-muted">Linked Cash Accounts</p>
+                <p className="mt-1 text-base font-semibold text-brand-text">{linkedCashAccounts.length}</p>
+              </div>
               {commodityContribution > 0 ? (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-brand-muted">Physical Commodity</p>
                   <p className="mt-1 text-base font-semibold text-brand-text">{formatCurrency(commodityContribution)}</p>
+                </div>
+              ) : null}
+              {cashContribution > 0 ? (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-brand-muted">Cash Contribution</p>
+                  <p className="mt-1 text-base font-semibold text-brand-text">{formatCurrency(cashContribution)}</p>
                 </div>
               ) : null}
               {detail?.goal?.useEpf ? (
@@ -288,6 +316,59 @@ function GoalDetailPage() {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
+            <div className="border-b border-brand-line px-5 py-4">
+              <h3 className="text-lg font-semibold tracking-tight text-brand-text">Allocated Cash Accounts</h3>
+            </div>
+
+            {linkedCashAccounts.length === 0 ? (
+              <div className="p-8 text-center text-sm text-brand-muted">
+                No cash accounts are linked to this goal.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="fo-table">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Account Name</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Bank</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Balance</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Interest Rate</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">% of Allocated</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="fo-table-body">
+                    {linkedCashAccounts.map((account) => {
+                      const balance = Number(account.balance || 0);
+                      const accountShare = totalAllocated > 0 ? (balance / totalAllocated) * 100 : 0;
+
+                      return (
+                        <tr key={account._id}>
+                          <td className="px-5 py-3 text-brand-text">{account.name}</td>
+                          <td className="px-5 py-3 text-brand-muted">{account.bank}</td>
+                          <td className="px-5 py-3 font-semibold text-brand-text">{formatCurrency(balance)}</td>
+                          <td className="px-5 py-3 text-brand-muted">{account.interestRate ? `${Number(account.interestRate).toFixed(2)}%` : "-"}</td>
+                          <td className="px-5 py-3 text-brand-muted">{accountShare.toFixed(2)}%</td>
+                          <td className="px-5 py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleUnlinkCashAccount(account._id)}
+                              disabled={unlinkingCashId === account._id}
+                              className="rounded-lg border border-brand-line px-3 py-1.5 text-xs font-semibold text-brand-text transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {unlinkingCashId === account._id ? "Unlinking..." : "Unlink"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
