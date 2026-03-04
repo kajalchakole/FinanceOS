@@ -4,8 +4,8 @@ import { NavLink } from "react-router-dom";
 const links = [
   { label: "Dashboard", to: "/dashboard" },
   { label: "Goals", to: "/goals" },
-  { label: "Holdings", to: "/holdings" },
   { label: "Portfolio", to: "/portfolio" },
+  { label: "Holdings", to: "/holdings" },
   { label: "Fixed Deposits", to: "/fixed-deposits" },
   { label: "EPF", to: "/epf" },
   { label: "NPS", to: "/nps" },

@@ -7,6 +7,7 @@ function GoalDetailPage() {
   const { id } = useParams();
   const [detail, setDetail] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState("");
   const [unlinkingHoldingId, setUnlinkingHoldingId] = useState("");
   const [unlinkingFDId, setUnlinkingFDId] = useState("");
@@ -34,6 +35,33 @@ function GoalDetailPage() {
 
   const refreshDashboard = () => {
     window.dispatchEvent(new CustomEvent("dashboard:refresh"));
+  };
+
+  const handleExportXlsx = async () => {
+    setError("");
+    setIsExporting(true);
+
+    try {
+      const response = await api.get(`/goals/${id}/export`, { responseType: "blob" });
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+      const contentDisposition = response.headers?.["content-disposition"] || "";
+      const match = contentDisposition.match(/filename="?([^"]+)"?/i);
+      const fileName = match?.[1] || `goal_${id}_export.xlsx`;
+      const fileUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = fileUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(fileUrl);
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || "Unable to export goal XLSX");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleUnlinkHolding = async (holdingId) => {
@@ -130,6 +158,14 @@ function GoalDetailPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleExportXlsx}
+            disabled={isExporting}
+            className="rounded-xl border border-brand-line px-4 py-2 text-sm font-semibold text-brand-text transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isExporting ? "Exporting..." : "Export XLSX"}
+          </button>
           <Link
             to="/goals"
             className="rounded-xl border border-brand-line px-4 py-2 text-sm font-semibold text-brand-muted transition hover:bg-slate-50"

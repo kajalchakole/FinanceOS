@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createGoal,
   deleteGoal,
+  exportGoalDetailXlsx,
   getGoalDetail,
   getGoalById,
   getGoals,
@@ -13,6 +14,7 @@ const goalRouter = Router();
 goalRouter.post("/", createGoal);
 goalRouter.get("/", getGoals);
 goalRouter.get("/:id/detail", getGoalDetail);
+goalRouter.get("/:id/export", exportGoalDetailXlsx);
 goalRouter.get("/:id", getGoalById);
 goalRouter.put("/:id", updateGoal);
 goalRouter.delete("/:id", deleteGoal);
