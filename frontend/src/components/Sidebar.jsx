@@ -14,7 +14,7 @@ const links = [
   { label: "Cash Accounts", to: "/cash-accounts" },
   { label: "Assets", to: "/assets" },
   { label: "Liabilities", to: "/liabilities" },
-  { label: "Security", to: "/security" },
+  { label: "Security Logs", to: "/security" },
   { label: "Settings", to: "/settings" }
 ];
 
