@@ -2,20 +2,20 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 
 const links = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Goals", to: "/goals" },
-  { label: "Portfolio", to: "/portfolio" },
-  { label: "Holdings", to: "/holdings" },
-  { label: "Fixed Deposits", to: "/fixed-deposits" },
-  { label: "EPF", to: "/epf" },
-  { label: "NPS", to: "/nps" },
-  { label: "PPF", to: "/ppf" },
-  { label: "Physical Commodity", to: "/physical-commodities" },
-  { label: "Cash Accounts", to: "/cash-accounts" },
-  { label: "Assets", to: "/assets" },
-  { label: "Liabilities", to: "/liabilities" },
-  { label: "Security Logs", to: "/security" },
-  { label: "Settings", to: "/settings" }
+  { label: "Dashboard", to: "/dashboard", icon: "bi-speedometer2" },
+  { label: "Goals", to: "/goals", icon: "bi-bullseye" },
+  { label: "Portfolio", to: "/portfolio", icon: "bi-pie-chart" },
+  { label: "Holdings", to: "/holdings", icon: "bi-briefcase" },
+  { label: "Fixed Deposits", to: "/fixed-deposits", icon: "bi-bank" },
+  { label: "EPF", to: "/epf", icon: "bi-safe" },
+  { label: "NPS", to: "/nps", icon: "bi-graph-up-arrow" },
+  { label: "PPF", to: "/ppf", icon: "bi-piggy-bank" },
+  { label: "Physical Commodity", to: "/physical-commodities", icon: "bi-gem" },
+  { label: "Cash Accounts", to: "/cash-accounts", icon: "bi-wallet2" },
+  { label: "Assets", to: "/assets", icon: "bi-building" },
+  { label: "Liabilities", to: "/liabilities", icon: "bi-exclamation-triangle" },
+  { label: "Security Logs", to: "/security", icon: "bi-shield-lock" },
+  { label: "Settings", to: "/settings", icon: "bi-gear" }
 ];
 
 function Sidebar({ sidebarOpen = false, onClose = () => {} }) {
@@ -43,7 +43,10 @@ function Sidebar({ sidebarOpen = false, onClose = () => {} }) {
               ].join(" ")
             }
           >
-            {link.label}
+            <span className="inline-flex items-center gap-2">
+              <i className={`bi ${link.icon}`} aria-hidden="true" />
+              <span>{link.label}</span>
+            </span>
           </NavLink>
         ))}
       </nav>
