@@ -12,19 +12,21 @@ export function PortfolioProvider({ children }) {
     setIsRefreshing(true);
 
     try {
-      const [holdingsResponse, goalsResponse, dashboardResponse] = await Promise.all([
+      const [holdingsResponse, goalsResponse, dashboardResponse, networthResponse] = await Promise.all([
         api.get("/holdings"),
         api.get("/goals"),
-        api.get("/dashboard")
+        api.get("/dashboard"),
+        api.get("/networth")
       ]);
 
       const payload = {
         holdings: holdingsResponse.data || [],
         goals: goalsResponse.data || [],
-        dashboard: dashboardResponse.data || {}
+        dashboard: dashboardResponse.data || {},
+        networth: networthResponse.data || {}
       };
 
-      setNetWorth(payload.dashboard?.netWorth || 0);
+      setNetWorth(payload.networth?.totalNetWorth || payload.dashboard?.netWorth || 0);
       window.dispatchEvent(new CustomEvent("portfolio:refreshed", { detail: payload }));
 
       return payload;

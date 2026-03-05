@@ -19,7 +19,7 @@ function TopHeader({ onOpenSidebar = () => {} }) {
   };
 
   const formattedNetWorth = `\u20B9${Number(netWorth || 0).toLocaleString("en-IN", {
-    maximumFractionDigits: 2
+    maximumFractionDigits: 0
   })}`;
 
   return (

@@ -6,10 +6,9 @@ import PpfAccount from "../ppf/ppf.model.js";
 import PhysicalCommodity from "../physicalCommodities/physicalCommodity.model.js";
 import Goal from "../goals/goal.model.js";
 import CashAccount from "../../models/CashAccount.js";
-import Liability from "../../models/Liability.js";
-import Asset from "../../models/Asset.js";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
-import { computeLiability, round2 } from "../../utils/liabilityEngine.js";
+import { round2 } from "../../utils/liabilityEngine.js";
+import { getNetWorthSnapshot } from "../../services/netWorthSnapshotService.js";
 
 const getHoldingValue = (holding) => Number(holding.quantity || 0) * Number(holding.currentPrice || 0);
 const getInvestedValue = (holding) => Number(holding.quantity || 0) * Number(holding.averagePrice || 0);
@@ -50,20 +49,8 @@ const buildGroupedAllocation = (holdings, keySelector, netWorth) => {
 export const getPortfolioSummary = async () => {
   const holdings = await Holding.find().lean();
 
-  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, cashAggregation, unlinkedCashAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf, activeFixedDeposits, activeEpfAccounts, activeNpsAccounts, activePpfAccounts, activeCommodities, activeCashAccounts, liabilities, manualAssetsAggregation] = await Promise.all([
-    FixedDeposit.aggregate([
-      {
-        $match: {
-          status: { $in: ["active", "matured"] }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$cachedValue" }
-        }
-      }
-    ]),
+  const [netWorthSnapshot, unlinkedFDAggregation, unlinkedCommodityAggregation, unlinkedCashAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf, activeFixedDeposits, activeEpfAccounts, activeNpsAccounts, activePpfAccounts, activeCommodities, activeCashAccounts] = await Promise.all([
+    getNetWorthSnapshot(),
     FixedDeposit.aggregate([
       {
         $match: {
@@ -75,62 +62,6 @@ export const getPortfolioSummary = async () => {
         $group: {
           _id: null,
           total: { $sum: "$cachedValue" }
-        }
-      }
-    ]),
-    EpfAccount.aggregate([
-      {
-        $match: {
-          $or: [{ isActive: true }, { isActive: { $exists: false } }]
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$cachedValue" }
-        }
-      }
-    ]),
-    NpsAccount.aggregate([
-      {
-        $match: {
-          $or: [{ isActive: true }, { isActive: { $exists: false } }]
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$cachedValue" }
-        }
-      }
-    ]),
-    PpfAccount.aggregate([
-      {
-        $match: {
-          $or: [{ isActive: true }, { isActive: { $exists: false } }]
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$cachedValue" }
-        }
-      }
-    ]),
-    PhysicalCommodity.aggregate([
-      {
-        $match: {
-          isActive: true
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: {
-            $sum: {
-              $multiply: ["$quantity", "$currentPricePerUnit"]
-            }
-          }
         }
       }
     ]),
@@ -153,14 +84,6 @@ export const getPortfolioSummary = async () => {
       }
     ]),
 
-    CashAccount.aggregate([
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$balance" }
-        }
-      }
-    ]),
     CashAccount.aggregate([
       {
         $match: {
@@ -188,25 +111,16 @@ export const getPortfolioSummary = async () => {
       $or: [{ isActive: true }, { isActive: { $exists: false } }]
     }).lean(),
     PhysicalCommodity.find({ isActive: true }).lean(),
-    CashAccount.find().lean(),
-    Liability.find().lean(),
-    Asset.aggregate([
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$currentValue" }
-        }
-      }
-    ])
+    CashAccount.find().lean()
   ]);
 
-  const totalFDValue = fdAggregation.length > 0 ? Number(fdAggregation[0].total || 0) : 0;
+  const totalFDValue = Number(netWorthSnapshot.totalFDValue || 0);
   const unlinkedFDValue = unlinkedFDAggregation.length > 0 ? Number(unlinkedFDAggregation[0].total || 0) : 0;
-  const totalEpfValue = epfAggregation.length > 0 ? Number(epfAggregation[0].total || 0) : 0;
-  const totalNpsValue = npsAggregation.length > 0 ? Number(npsAggregation[0].total || 0) : 0;
-  const totalPpfValue = ppfAggregation.length > 0 ? Number(ppfAggregation[0].total || 0) : 0;
-  const totalCommodityValue = commodityAggregation.length > 0 ? Number(commodityAggregation[0].total || 0) : 0;
-  const totalCashValue = cashAggregation.length > 0 ? Number(cashAggregation[0].total || 0) : 0;
+  const totalEpfValue = Number(netWorthSnapshot.totalEpfValue || 0);
+  const totalNpsValue = Number(netWorthSnapshot.totalNpsValue || 0);
+  const totalPpfValue = Number(netWorthSnapshot.totalPpfValue || 0);
+  const totalCommodityValue = Number(netWorthSnapshot.totalCommodityValue || 0);
+  const totalCashValue = Number(netWorthSnapshot.totalCashValue || 0);
   const unlinkedCommodityValue = unlinkedCommodityAggregation.length > 0 ? Number(unlinkedCommodityAggregation[0].total || 0) : 0;
   const unlinkedCashValue = unlinkedCashAggregation.length > 0 ? Number(unlinkedCashAggregation[0].total || 0) : 0;
   const unlinkedEpfValue = goalUsingEpf ? 0 : totalEpfValue;
@@ -219,18 +133,15 @@ export const getPortfolioSummary = async () => {
     investedValue: getInvestedValue(holding)
   }));
 
-  const totalMarketValue = holdingsWithValue.reduce((sum, holding) => sum + holding.value, 0);
-  const portfolioValue = totalMarketValue;
-  const assetValue = Number(manualAssetsAggregation[0]?.total || 0);
-  const netWorth = portfolioValue + assetValue;
-
-  const totalAssets = totalMarketValue + totalFDValue + totalEpfValue + totalNpsValue + totalPpfValue + totalCommodityValue + totalCashValue + assetValue;
-  const totalLiabilities = liabilities.reduce((sum, liability) => {
-    const computed = computeLiability(liability);
-    return sum + Number(computed.outstanding || 0);
-  }, 0);
-  const netWorthAfterLiabilities = totalAssets - totalLiabilities;
-  const debtToAssetRatioPct = getPercentage(totalLiabilities, Math.max(totalAssets, 1));
+  const totalMarketValue = Number(netWorthSnapshot.totalMarketValue || 0);
+  const portfolioValue = Number(netWorthSnapshot.portfolioValue || 0);
+  const assetValue = Number(netWorthSnapshot.assetValue || 0);
+  const grossNetWorth = Number(netWorthSnapshot.grossNetWorth || 0);
+  const totalAssets = Number(netWorthSnapshot.totalAssets || 0);
+  const totalLiabilities = Number(netWorthSnapshot.totalLiabilities || 0);
+  const netWorthAfterLiabilities = Number(netWorthSnapshot.netWorth || 0);
+  const netWorth = Number(netWorthSnapshot.netWorth || 0);
+  const debtToAssetRatioPct = Number(netWorthSnapshot.debtToAssetRatioPct || 0);
   const totalInvested = holdingsWithValue.reduce((sum, holding) => sum + holding.investedValue, 0);
   const totalProfit = totalAssets - totalInvested;
   const totalHoldings = holdingsWithValue.length;
@@ -501,6 +412,7 @@ export const getPortfolioSummary = async () => {
     portfolioValue: round2(portfolioValue),
     assetValue: round2(assetValue),
     netWorth: round2(netWorth),
+    grossNetWorth: round2(grossNetWorth),
     netWorthAfterLiabilities: round2(netWorthAfterLiabilities),
     totalAssets: round2(totalAssets),
     totalLiabilities: round2(totalLiabilities),

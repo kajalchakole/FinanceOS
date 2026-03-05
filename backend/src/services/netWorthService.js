@@ -1,5 +1,6 @@
 import Holding from "../modules/holdings/holding.model.js";
 import Asset from "../models/Asset.js";
+import { getNetWorthSnapshot } from "./netWorthSnapshotService.js";
 
 const distributionCategories = [
   "Equity",
@@ -45,19 +46,18 @@ const buildBaseDistributionMap = () => {
 };
 
 export const calculateNetWorth = async () => {
-  const [holdings, assets] = await Promise.all([
-    Holding.find().lean(),
-    Asset.find().lean()
-  ]);
-
-  const financialAssetsValue = holdings.reduce((sum, holding) => sum + getHoldingValue(holding), 0);
-  const assetValue = assets.reduce((sum, asset) => sum + Number(asset.currentValue || 0), 0);
-  const totalNetWorth = financialAssetsValue + assetValue;
+  const snapshot = await getNetWorthSnapshot();
+  const financialAssetsValue = Number(snapshot.totalAssets || 0) - Number(snapshot.assetValue || 0);
+  const assetValue = Number(snapshot.assetValue || 0);
+  const totalNetWorth = Number(snapshot.netWorth || 0);
 
   return {
     financialAssetsValue,
     assetValue,
-    totalNetWorth
+    totalNetWorth,
+    grossNetWorth: Number(snapshot.grossNetWorth || 0),
+    totalAssets: Number(snapshot.totalAssets || 0),
+    totalLiabilities: Number(snapshot.totalLiabilities || 0)
   };
 };
 
@@ -155,6 +155,9 @@ export const getNetWorthSummary = async () => {
     totalNetWorth: netWorth.totalNetWorth,
     financialAssetsValue: netWorth.financialAssetsValue,
     assetValue: netWorth.assetValue,
+    grossNetWorth: netWorth.grossNetWorth,
+    totalAssets: netWorth.totalAssets,
+    totalLiabilities: netWorth.totalLiabilities,
     liquidValue: liquidity.liquidValue,
     semiLiquidValue: liquidity.semiLiquidValue,
     illiquidValue: liquidity.illiquidValue,
