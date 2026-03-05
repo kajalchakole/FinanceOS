@@ -11,6 +11,22 @@ const formatCurrency = (value) => `\u20B9${Number(value || 0).toLocaleString("en
   maximumFractionDigits: 0
 })}`;
 
+const formatRecoverySuggestion = (suggestion = {}) => {
+  if (suggestion.type === "Increase SIP") {
+    return `Suggested SIP increase: ${formatCurrency(suggestion.amount)}`;
+  }
+  if (suggestion.type === "Delay Goal") {
+    return `Suggested delay: ${Number(suggestion.years || 0)} year(s)`;
+  }
+  if (suggestion.type === "Increase Expected Return") {
+    return `Suggested return target: ${Number(suggestion.targetReturnRate || 0).toFixed(2)}%`;
+  }
+  if (suggestion.type === "Goal Year Reached") {
+    return suggestion.message || "Target year reached";
+  }
+  return "Review recovery options";
+};
+
 const getProjectionMeta = (projection = {}) => {
   const isOnTrack = projection.status === "On Track";
   const isGoalMet = projection.status === "Goal Met";
@@ -65,6 +81,7 @@ const getGoalInsightScore = (goal = {}) => {
 
 function GoalsPage() {
   const [goals, setGoals] = useState([]);
+  const [goalIntelligence, setGoalIntelligence] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingGoalId, setDeletingGoalId] = useState("");
@@ -87,8 +104,12 @@ function GoalsPage() {
   useEffect(() => {
     const fetchGoals = async () => {
       try {
-        const response = await api.get("/goals");
-        setGoals(response.data);
+        const [goalsResponse, intelligenceResponse] = await Promise.all([
+          api.get("/goals"),
+          api.get("/goals/intelligence")
+        ]);
+        setGoals(goalsResponse.data);
+        setGoalIntelligence(Array.isArray(intelligenceResponse.data) ? intelligenceResponse.data : []);
       } catch (requestError) {
         setError(requestError.response?.data?.message || "Unable to load goals");
       } finally {
@@ -298,6 +319,9 @@ function GoalsPage() {
   };
 
   const getSortIndicator = (key) => (sortConfig.key === key ? (sortConfig.direction === "asc" ? " ▲" : " ▼") : "");
+  const atRiskGoals = useMemo(() => (
+    goalIntelligence.filter((goal) => goal.status === "At Risk")
+  ), [goalIntelligence]);
   const selectedGoalIdSet = useMemo(() => new Set(selectedGoalIds), [selectedGoalIds]);
   const allGridGoalsSelected = sortedGoals.length > 0 && sortedGoals.every((goal) => selectedGoalIdSet.has(goal._id));
   const hasSelectedGoals = selectedGoalIds.length > 0;
@@ -433,6 +457,29 @@ function GoalsPage() {
 
       {isLoading ? <p className="text-sm text-brand-muted">Loading goals...</p> : null}
       {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
+      {!isLoading && !error ? (
+        <article className="rounded-2xl border border-brand-line bg-brand-panel p-5 shadow-soft">
+          <h3 className="text-base font-semibold tracking-tight text-brand-text">Goal Intelligence Alerts</h3>
+          <p className="mt-1 text-sm text-brand-muted">Risk-based recovery signals from the Goal Intelligence engine.</p>
+          {atRiskGoals.length === 0 ? (
+            <p className="mt-3 text-sm text-emerald-600">No at-risk goals detected.</p>
+          ) : (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {atRiskGoals.map((goal) => (
+                <div key={`risk-${goal.goalId}`} className="rounded-xl border border-rose-200 bg-rose-50 p-3">
+                  <p className="text-sm font-semibold text-rose-700">{goal.goalName}</p>
+                  <p className="mt-1 text-xs text-rose-700">
+                    Gap {formatCurrency(goal.gap)} | Required {formatCurrency(goal.futureRequired)}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-rose-700">
+                    {formatRecoverySuggestion(goal.recoverySuggestions?.[0])}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+      ) : null}
       {!isLoading && !error && goals.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel p-10 text-center text-sm text-brand-muted">
           No goals created yet

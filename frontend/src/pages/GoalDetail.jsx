@@ -6,6 +6,7 @@ import api from "../services/api";
 function GoalDetailPage() {
   const { id } = useParams();
   const [detail, setDetail] = useState(null);
+  const [goalIntelligence, setGoalIntelligence] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState("");
@@ -14,8 +15,14 @@ function GoalDetailPage() {
   const [unlinkingCashId, setUnlinkingCashId] = useState("");
 
   const fetchDetail = useCallback(async () => {
-    const response = await api.get(`/goals/${id}/detail`);
-    setDetail(response.data);
+    const [detailResponse, intelligenceResponse] = await Promise.all([
+      api.get(`/goals/${id}/detail`),
+      api.get("/goals/intelligence")
+    ]);
+    setDetail(detailResponse.data);
+    const intelligenceRows = Array.isArray(intelligenceResponse.data) ? intelligenceResponse.data : [];
+    const matchedGoal = intelligenceRows.find((goal) => String(goal.goalId) === String(id)) || null;
+    setGoalIntelligence(matchedGoal);
   }, [id]);
 
   useEffect(() => {
@@ -252,6 +259,47 @@ function GoalDetailPage() {
               ) : null}
             </div>
           </div>
+
+          {goalIntelligence ? (
+            <div className="rounded-2xl border border-brand-line bg-brand-panel p-5 shadow-soft">
+              <h3 className="text-lg font-semibold tracking-tight text-brand-text">Goal Intelligence</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-brand-muted">Future Required</p>
+                  <p className="mt-1 text-base font-semibold text-brand-text">{formatCurrency(goalIntelligence.futureRequired)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-brand-muted">Projected Corpus</p>
+                  <p className="mt-1 text-base font-semibold text-brand-text">{formatCurrency(goalIntelligence.projectedCorpus)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-brand-muted">Gap</p>
+                  <p className={`mt-1 text-base font-semibold ${Number(goalIntelligence.gap || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    {formatCurrency(goalIntelligence.gap)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-brand-muted">Status</p>
+                  <p className="mt-1 text-base font-semibold text-brand-text">{goalIntelligence.status}</p>
+                </div>
+              </div>
+              {Array.isArray(goalIntelligence.recoverySuggestions) && goalIntelligence.recoverySuggestions.length > 0 ? (
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3">
+                  <p className="text-sm font-semibold text-rose-700">Recovery Suggestions</p>
+                  <div className="mt-2 space-y-1">
+                    {goalIntelligence.recoverySuggestions.map((suggestion, index) => (
+                      <p key={`${suggestion.type}-${index}`} className="text-xs text-rose-700">
+                        {suggestion.type}
+                        {suggestion.amount !== undefined ? `: ${formatCurrency(suggestion.amount)}` : ""}
+                        {suggestion.years !== undefined ? `: ${suggestion.years} year(s)` : ""}
+                        {suggestion.targetReturnRate !== undefined ? `: ${Number(suggestion.targetReturnRate).toFixed(2)}%` : ""}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
             <div className="border-b border-brand-line px-5 py-4">

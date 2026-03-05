@@ -7,6 +7,7 @@ import PhysicalCommodity from "../physicalCommodities/physicalCommodity.model.js
 import Goal from "../goals/goal.model.js";
 import CashAccount from "../../models/CashAccount.js";
 import Liability from "../../models/Liability.js";
+import Asset from "../../models/Asset.js";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 import { computeLiability, round2 } from "../../utils/liabilityEngine.js";
 
@@ -49,7 +50,7 @@ const buildGroupedAllocation = (holdings, keySelector, netWorth) => {
 export const getPortfolioSummary = async () => {
   const holdings = await Holding.find().lean();
 
-  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, cashAggregation, unlinkedCashAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf, activeFixedDeposits, activeEpfAccounts, activeNpsAccounts, activePpfAccounts, activeCommodities, activeCashAccounts, liabilities] = await Promise.all([
+  const [fdAggregation, unlinkedFDAggregation, epfAggregation, npsAggregation, ppfAggregation, commodityAggregation, unlinkedCommodityAggregation, cashAggregation, unlinkedCashAggregation, goalUsingEpf, goalUsingNps, goalUsingPpf, activeFixedDeposits, activeEpfAccounts, activeNpsAccounts, activePpfAccounts, activeCommodities, activeCashAccounts, liabilities, manualAssetsAggregation] = await Promise.all([
     FixedDeposit.aggregate([
       {
         $match: {
@@ -188,7 +189,15 @@ export const getPortfolioSummary = async () => {
     }).lean(),
     PhysicalCommodity.find({ isActive: true }).lean(),
     CashAccount.find().lean(),
-    Liability.find().lean()
+    Liability.find().lean(),
+    Asset.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$currentValue" }
+        }
+      }
+    ])
   ]);
 
   const totalFDValue = fdAggregation.length > 0 ? Number(fdAggregation[0].total || 0) : 0;
@@ -211,12 +220,16 @@ export const getPortfolioSummary = async () => {
   }));
 
   const totalMarketValue = holdingsWithValue.reduce((sum, holding) => sum + holding.value, 0);
-  const totalAssets = totalMarketValue + totalFDValue + totalEpfValue + totalNpsValue + totalPpfValue + totalCommodityValue + totalCashValue;
+  const portfolioValue = totalMarketValue;
+  const assetValue = Number(manualAssetsAggregation[0]?.total || 0);
+  const netWorth = portfolioValue + assetValue;
+
+  const totalAssets = totalMarketValue + totalFDValue + totalEpfValue + totalNpsValue + totalPpfValue + totalCommodityValue + totalCashValue + assetValue;
   const totalLiabilities = liabilities.reduce((sum, liability) => {
     const computed = computeLiability(liability);
     return sum + Number(computed.outstanding || 0);
   }, 0);
-  const netWorth = totalAssets - totalLiabilities;
+  const netWorthAfterLiabilities = totalAssets - totalLiabilities;
   const debtToAssetRatioPct = getPercentage(totalLiabilities, Math.max(totalAssets, 1));
   const totalInvested = holdingsWithValue.reduce((sum, holding) => sum + holding.investedValue, 0);
   const totalProfit = totalAssets - totalInvested;
@@ -485,7 +498,10 @@ export const getPortfolioSummary = async () => {
     .slice(0, 5);
 
   return {
+    portfolioValue: round2(portfolioValue),
+    assetValue: round2(assetValue),
     netWorth: round2(netWorth),
+    netWorthAfterLiabilities: round2(netWorthAfterLiabilities),
     totalAssets: round2(totalAssets),
     totalLiabilities: round2(totalLiabilities),
     debtToAssetRatioPct: round2(debtToAssetRatioPct),

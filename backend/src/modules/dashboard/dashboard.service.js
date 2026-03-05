@@ -7,6 +7,7 @@ import PpfAccount from "../ppf/ppf.model.js";
 import PhysicalCommodity from "../physicalCommodities/physicalCommodity.model.js";
 import CashAccount from "../../models/CashAccount.js";
 import Liability from "../../models/Liability.js";
+import Asset from "../../models/Asset.js";
 import { calculateProjection, getCorpusByGoalIds } from "../projection/projection.service.js";
 import { computeLiability, round2 } from "../../utils/liabilityEngine.js";
 
@@ -18,7 +19,7 @@ export const getDashboardSummary = async () => {
     .map((goal) => calculateProjection(goal, corpusByGoalId[goal._id.toString()] || 0))
     .filter((projection) => projection.status === "On Track" || projection.status === "At Risk");
 
-  const [holdingsNetWorthAggregation, fdNetWorthAggregation, epfNetWorthAggregation, npsNetWorthAggregation, ppfNetWorthAggregation, commodityNetWorthAggregation, cashNetWorthAggregation, liabilities] = await Promise.all([
+  const [holdingsNetWorthAggregation, fdNetWorthAggregation, epfNetWorthAggregation, npsNetWorthAggregation, ppfNetWorthAggregation, commodityNetWorthAggregation, cashNetWorthAggregation, liabilities, assetNetWorthAggregation] = await Promise.all([
     Holding.aggregate([
       {
         $group: {
@@ -118,7 +119,17 @@ export const getDashboardSummary = async () => {
         }
       }
     ]),
-    Liability.find().lean()
+    Liability.find().lean(),
+    Asset.aggregate([
+      {
+        $group: {
+          _id: null,
+          netWorth: {
+            $sum: "$currentValue"
+          }
+        }
+      }
+    ])
   ]);
 
   const totals = activeGoalProjections.reduce(
@@ -135,14 +146,18 @@ export const getDashboardSummary = async () => {
 
   const totalGap = totals.totalProjectedCorpus - totals.totalFutureRequired;
 
+  const portfolioValue = Number(holdingsNetWorthAggregation[0]?.netWorth || 0);
+  const assetValue = Number(assetNetWorthAggregation[0]?.netWorth || 0);
+
   const totalAssets =
-    Number(holdingsNetWorthAggregation[0]?.netWorth || 0) +
+    portfolioValue +
     Number(fdNetWorthAggregation[0]?.netWorth || 0) +
     Number(epfNetWorthAggregation[0]?.netWorth || 0) +
     Number(npsNetWorthAggregation[0]?.netWorth || 0) +
     Number(ppfNetWorthAggregation[0]?.netWorth || 0) +
     Number(commodityNetWorthAggregation[0]?.netWorth || 0) +
-    Number(cashNetWorthAggregation[0]?.netWorth || 0);
+    Number(cashNetWorthAggregation[0]?.netWorth || 0) +
+    assetValue;
 
   const totalLiabilities = liabilities.reduce((sum, liability) => {
     const computed = computeLiability(liability);
@@ -160,6 +175,8 @@ export const getDashboardSummary = async () => {
     goalCountIncluded: activeGoalProjections.length,
     totalAssets: round2(totalAssets),
     totalLiabilities: round2(totalLiabilities),
+    portfolioValue: round2(portfolioValue),
+    assetValue: round2(assetValue),
     netWorth: round2(netWorth),
     debtToAssetRatioPct: round2(debtToAssetRatioPct),
     totalAssetsValue: round2(totalAssets),

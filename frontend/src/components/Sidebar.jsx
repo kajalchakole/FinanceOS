@@ -12,6 +12,7 @@ const links = [
   { label: "PPF", to: "/ppf" },
   { label: "Physical Commodity", to: "/physical-commodities" },
   { label: "Cash Accounts", to: "/cash-accounts" },
+  { label: "Assets", to: "/assets" },
   { label: "Liabilities", to: "/liabilities" },
   { label: "Security", to: "/security" },
   { label: "Settings", to: "/settings" }

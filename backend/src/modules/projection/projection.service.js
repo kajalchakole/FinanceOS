@@ -20,7 +20,7 @@ const activePpfAccountFilter = {
 
 export const calculateProjection = (goal, corpusBase = 0) => {
   const currentYear = new Date().getFullYear();
-  const years = goal.targetYear - currentYear;
+  const years = goal.targetYear - currentYear + 1;
 
   if (years < 0) {
     const futureRequired = Number(goal.presentValue || 0);
@@ -39,7 +39,7 @@ export const calculateProjection = (goal, corpusBase = 0) => {
   const futureRequired =
     goal.presentValue * Math.pow(1 + goal.inflationRate / 100, years);
 
-  let corpus = corpusBase;
+  let corpus = Number(corpusBase || 0) + Number(goal.initialInvestment || 0);
   let annualSIP = goal.monthlySIP * 12;
 
   for (let i = 0; i < years; i += 1) {
@@ -54,7 +54,7 @@ export const calculateProjection = (goal, corpusBase = 0) => {
 
   if (projectedCorpus >= futureRequired) {
     status = "Goal Met";
-  } else if (gap >= 0) {
+  } else if (futureRequired > 0 && (gap / futureRequired) >= -0.1) {
     status = "On Track";
   } else {
     status = "At Risk";

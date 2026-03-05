@@ -32,8 +32,8 @@ const parseNonNegativeNumber = (value, fieldName) => {
 const parseCommodityType = (value) => {
   const commodityType = String(value || "").trim();
 
-  if (!["Gold", "Silver"].includes(commodityType)) {
-    throw badRequestError("commodityType must be one of Gold, Silver");
+  if (!["Gold", "Silver", "Platinum", "Diamond"].includes(commodityType)) {
+    throw badRequestError("commodityType must be one of Gold, Silver, Platinum, Diamond");
   }
 
   return commodityType;

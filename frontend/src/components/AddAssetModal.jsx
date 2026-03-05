@@ -1,16 +1,12 @@
 import React from "react";
 
-import AmountHint from "./AmountHint";
+const assetCategories = ["Real Estate", "Vehicle", "Cash", "Business", "Other"];
 
-const commodityTypes = ["Gold", "Silver", "Platinum", "Diamond"];
-const units = ["grams", "kg"];
-
-function PhysicalCommodityModal({
+function AddAssetModal({
   isOpen,
   isSaving,
   isEditMode,
   formData,
-  goals,
   error,
   onChange,
   onClose,
@@ -21,23 +17,19 @@ function PhysicalCommodityModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
       <article
         className="w-full max-w-2xl rounded-2xl border border-brand-line bg-brand-panel p-6 shadow-soft"
         onClick={(event) => event.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-brand-text">
-          {isEditMode ? "Edit Commodity" : "Add Commodity"}
-        </h3>
+        <h3 className="text-lg font-semibold text-brand-text">{isEditMode ? "Edit Asset" : "Add Asset"}</h3>
 
         <form className="mt-5 space-y-5" onSubmit={onSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 text-sm text-brand-text">
               <span>Name *</span>
               <input
+                type="text"
                 name="name"
                 value={formData.name}
                 onChange={onChange}
@@ -47,103 +39,68 @@ function PhysicalCommodityModal({
             </label>
 
             <label className="space-y-2 text-sm text-brand-text">
-              <span>Commodity Type *</span>
+              <span>Category *</span>
               <select
-                name="commodityType"
-                value={formData.commodityType}
+                name="category"
+                value={formData.category}
                 onChange={onChange}
                 required
                 className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
               >
-                {commodityTypes.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                {assetCategories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
                 ))}
               </select>
             </label>
 
             <label className="space-y-2 text-sm text-brand-text">
-              <span>Quantity *</span>
+              <span>Purchase Value *</span>
               <input
                 type="number"
-                name="quantity"
-                min="0"
-                step="0.0001"
-                value={formData.quantity}
-                onChange={onChange}
-                required
-                className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
-              />
-            </label>
-
-            <label className="space-y-2 text-sm text-brand-text">
-              <span>Unit *</span>
-              <select
-                name="unit"
-                value={formData.unit}
-                onChange={onChange}
-                required
-                className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
-              >
-                {units.map((unit) => (
-                  <option key={unit} value={unit}>{unit}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-brand-text">
-              <span>Average Cost per Unit *</span>
-              <input
-                type="number"
-                name="averageCostPerUnit"
+                name="purchaseValue"
                 min="0"
                 step="0.01"
-                value={formData.averageCostPerUnit}
+                value={formData.purchaseValue}
                 onChange={onChange}
                 required
                 className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
               />
-              <AmountHint value={formData.averageCostPerUnit} />
             </label>
 
             <label className="space-y-2 text-sm text-brand-text">
-              <span>Current Price per Unit *</span>
+              <span>Current Value *</span>
               <input
                 type="number"
-                name="currentPricePerUnit"
+                name="currentValue"
                 min="0"
                 step="0.01"
-                value={formData.currentPricePerUnit}
+                value={formData.currentValue}
                 onChange={onChange}
                 required
                 className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
               />
-              <AmountHint value={formData.currentPricePerUnit} />
             </label>
 
             <label className="space-y-2 text-sm text-brand-text">
-              <span>Link to Goal (Optional)</span>
-              <select
-                name="goalId"
-                value={formData.goalId}
+              <span>Purchase Date</span>
+              <input
+                type="date"
+                name="purchaseDate"
+                value={formData.purchaseDate}
                 onChange={onChange}
                 className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
-              >
-                <option value="">Unassigned</option>
-                {goals.map((goal) => (
-                  <option key={goal._id} value={goal._id}>{goal.name}</option>
-                ))}
-              </select>
+              />
             </label>
 
-            <label className="mt-8 flex items-center gap-2 text-sm text-brand-text">
-              <input
-                type="checkbox"
-                name="isActive"
-                checked={Boolean(formData.isActive)}
+            <label className="space-y-2 text-sm text-brand-text md:col-span-2">
+              <span>Notes</span>
+              <textarea
+                name="notes"
+                rows={3}
+                value={formData.notes}
                 onChange={onChange}
-                className="h-4 w-4 rounded border-brand-line"
+                className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
               />
-              <span>Active</span>
             </label>
           </div>
 
@@ -172,4 +129,4 @@ function PhysicalCommodityModal({
   );
 }
 
-export default PhysicalCommodityModal;
+export default AddAssetModal;

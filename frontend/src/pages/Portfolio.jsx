@@ -8,6 +8,7 @@ import api from "../services/api";
 function PortfolioPage() {
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
+  const [allocationSummary, setAllocationSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [instrumentSort, setInstrumentSort] = useState({ key: "value", direction: "desc" });
@@ -16,8 +17,12 @@ function PortfolioPage() {
   const { health, lastBackupText } = useBackupStatus();
 
   const fetchSummary = async () => {
-    const response = await api.get("/portfolio/summary");
-    setSummary(response.data);
+    const [portfolioResponse, allocationResponse] = await Promise.all([
+      api.get("/portfolio/summary"),
+      api.get("/allocation")
+    ]);
+    setSummary(portfolioResponse.data);
+    setAllocationSummary(allocationResponse.data || null);
   };
 
   useEffect(() => {
@@ -192,6 +197,52 @@ function PortfolioPage() {
             <span className="mx-3 text-gray-300">|</span>
             <span>Unassigned Capital: {formatPercent(summary?.unassignedPercent)}</span>
           </div>
+
+          <article className="mt-8 overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">
+            <div className="border-b border-brand-line px-5 py-4">
+              <h3 className="text-lg font-semibold tracking-tight text-brand-text">Allocation Drift</h3>
+            </div>
+            {!allocationSummary?.driftAnalysis?.length ? (
+              <p className="p-5 text-sm text-brand-muted">No allocation drift data available.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="fo-table">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Category</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Target %</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Actual %</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Target Amount</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Actual Amount</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Drift %</th>
+                      <th className="px-5 py-3 font-semibold text-brand-text">Drift Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="fo-table-body">
+                    {allocationSummary.driftAnalysis.map((row) => {
+                      const driftPositive = Number(row.drift || 0) >= 0;
+                      const driftClassName = driftPositive ? "text-rose-600" : "text-emerald-600";
+                      return (
+                        <tr key={row.category}>
+                          <td className="px-5 py-3 text-brand-text">{row.category}</td>
+                          <td className="px-5 py-3 text-brand-muted">{formatPercent(row.target)}</td>
+                          <td className="px-5 py-3 text-brand-muted">{formatPercent(row.actual)}</td>
+                          <td className="px-5 py-3 text-brand-muted">{formatCurrency(row.targetAmount)}</td>
+                          <td className="px-5 py-3 text-brand-muted">{formatCurrency(row.actualAmount)}</td>
+                          <td className={`px-5 py-3 font-semibold ${driftClassName}`}>
+                            {driftPositive ? "+" : ""}{formatPercent(row.drift)}
+                          </td>
+                          <td className={`px-5 py-3 font-semibold ${driftClassName}`}>
+                            {driftPositive ? "+" : ""}{formatCurrency(row.driftAmount)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
 
           <div className="mt-8 grid gap-8 xl:grid-cols-2">
             <article className="overflow-hidden rounded-2xl border border-brand-line bg-brand-panel shadow-soft">

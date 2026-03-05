@@ -9,7 +9,7 @@ const physicalCommoditySchema = new mongoose.Schema(
     },
     commodityType: {
       type: String,
-      enum: ["Gold", "Silver"],
+      enum: ["Gold", "Silver", "Platinum", "Diamond"],
       required: true
     },
     quantity: {

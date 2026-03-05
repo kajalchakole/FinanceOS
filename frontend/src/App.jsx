@@ -14,6 +14,7 @@ import PPFPage from "./pages/PPF";
 import PhysicalCommoditiesPage from "./pages/PhysicalCommodities";
 import CashAccountsPage from "./pages/CashAccountsPage";
 import LiabilitiesPage from "./pages/LiabilitiesPage";
+import AssetsPage from "./pages/Assets";
 import GoalDetailPage from "./pages/GoalDetail";
 import GoalsPage from "./pages/Goals";
 import HoldingsPage from "./pages/Holdings";
@@ -249,6 +250,7 @@ function App() {
           <Route path="/ppf" element={<PPFPage />} />
           <Route path="/physical-commodities" element={<PhysicalCommoditiesPage />} />
           <Route path="/cash-accounts" element={<CashAccountsPage />} />
+          <Route path="/assets" element={<AssetsPage />} />
           <Route path="/liabilities" element={<LiabilitiesPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/settings" element={<SettingsPage />} />
