@@ -19,6 +19,24 @@ const getBreezeConfig = () => ({
   sessionToken: process.env.BREEZE_SESSION_TOKEN?.trim() || ""
 });
 
+const isBreezeSyncDebugEnabled = () => (
+  process.env.NODE_ENV !== "production"
+  && String(process.env.BREEZE_SYNC_DEBUG || "").trim().toLowerCase() === "true"
+);
+
+const logBreezeSyncDebug = (message, payload = null) => {
+  if (!isBreezeSyncDebugEnabled()) {
+    return;
+  }
+
+  if (payload === null) {
+    console.debug(`[Breeze Sync] ${message}`);
+    return;
+  }
+
+  console.debug(`[Breeze Sync] ${message}`, payload);
+};
+
 const getErrorMessage = (error) => {
   if (!error) {
     return "Unknown error";
@@ -901,40 +919,19 @@ export const syncBreezeHoldings = async () => {
       ...getHoldingItems(portfolioBseResponse)
     ];
 
-    if (process.env.NODE_ENV !== "production") {
-      const sample = getHoldingItems(dematResponse)[0] || mergedPortfolioResponse[0] || null;
-      console.debug("[Breeze Sync] Sample holding shape:", sample);
-      const portfolioSample = mergedPortfolioResponse[0] || null;
-      console.debug("[Breeze Sync] Portfolio sample:", portfolioSample);
-    }
-
     const dematItems = getHoldingItems(dematResponse).filter(isEligiblePhaseOneHolding);
     const portfolioItems = mergedPortfolioResponse.filter(isEligiblePhaseOneHolding);
 
-    if (process.env.NODE_ENV !== "production") {
-      console.debug("[Breeze Sync] Parsed holding rows", {
+    logBreezeSyncDebug("Parsed holding rows", {
         dematCount: dematItems.length,
         portfolioCount: portfolioItems.length
       });
 
-      const rawAverageDebug = [...dematItems, ...portfolioItems]
-        .map((item) => {
-          const match = pickFirstNumericKeyValue(item, averagePriceDebugKeys);
+    logBreezeSyncDebug("Average price key availability", {
+      dematRowsWithAveragePriceKey: dematItems.filter((item) => pickFirstNumericKeyValue(item, averagePriceDebugKeys)).length,
+      portfolioRowsWithAveragePriceKey: portfolioItems.filter((item) => pickFirstNumericKeyValue(item, averagePriceDebugKeys)).length
+    });
 
-          return {
-            source: dematItems.includes(item) ? "demat" : "portfolio",
-            stockCode: String(item?.stock_code || item?.symbol || item?.tradingsymbol || "").trim() || null,
-            instrumentName: String(
-              item?.security_name || item?.stock_name || item?.symbol || item?.tradingsymbol || item?.stock_code || ""
-            ).trim() || null,
-            averagePriceKey: match?.key || null,
-            averagePriceRawValue: match?.raw ?? null,
-            averagePriceNumericValue: match?.value ?? null
-          };
-        });
-
-      console.debug("[Breeze Sync] Raw API average-price snapshot", rawAverageDebug);
-    }
     const existingHoldings = await Holding.find(
       { broker: "breeze" },
       { instrumentName: 1, instrumentType: 1, averagePrice: 1, currentPrice: 1, goalId: 1 }
@@ -964,9 +961,6 @@ export const syncBreezeHoldings = async () => {
 
     const normalizedRows = [...dematItems, ...portfolioItems].map((item) => {
       const normalized = normalizeBreezeHolding(item);
-      normalized.__debugRawItem = item;
-      normalized.__debugStockCode = item?.stock_code || item?.symbol || item?.tradingsymbol || null;
-      normalized.__debugSource = dematItems.includes(item) ? "demat" : "portfolio";
       const key = getHoldingKey(normalized.instrumentName, normalized.instrumentType);
       const previous = previousPriceByKey.get(key);
       const existingGoalId = goalIdByHoldingKey.get(key);
@@ -991,29 +985,12 @@ export const syncBreezeHoldings = async () => {
 
     const normalizedHoldings = upsertByQuality(normalizedRows);
 
-    if (process.env.NODE_ENV !== "production") {
-      const unresolvedAfterNormalize = normalizedRows
-        .filter((row) => row.instrumentType !== "Cash" && (row.currentPrice <= 0 || row.averagePrice <= 0))
-        .slice(0, 10)
-        .map((row) => ({
-          instrumentName: row.instrumentName,
-          source: row.__debugSource,
-          stockCode: row.sourceStockCode || row.__debugStockCode,
-          quantity: row.quantity,
-          averagePrice: row.averagePrice,
-          averagePriceSource: row.averagePriceSource,
-          currentPrice: row.currentPrice,
-          rawKeys: Object.keys(row.__debugRawItem || {})
-        }));
-
-      console.debug("[Breeze Sync] Normalized rows snapshot", {
-        totalRows: normalizedRows.length,
-        unresolvedCount: normalizedRows.filter(
-          (row) => row.instrumentType !== "Cash" && (row.currentPrice <= 0 || row.averagePrice <= 0)
-        ).length,
-        unresolvedSample: unresolvedAfterNormalize
-      });
-    }
+    logBreezeSyncDebug("Normalized rows summary", {
+      totalRows: normalizedRows.length,
+      unresolvedCount: normalizedRows.filter(
+        (row) => row.instrumentType !== "Cash" && (row.currentPrice <= 0 || row.averagePrice <= 0)
+      ).length
+    });
 
     const nonCashHoldings = normalizedHoldings.filter((holding) => holding.instrumentType !== "Cash");
     const pricedNonCashHoldings = await applyCommonMarketPrices(nonCashHoldings);
@@ -1066,49 +1043,20 @@ export const syncBreezeHoldings = async () => {
       });
     }
 
-    if (process.env.NODE_ENV !== "production") {
-      const unresolvedAverage = normalizedHoldings.find(
+    logBreezeSyncDebug("Post-merge holdings summary", {
+      totalHoldings: normalizedHoldings.length,
+      pricedCount: normalizedHoldings.filter(
+        (holding) => holding.instrumentType !== "Cash" && holding.currentPrice > 0
+      ).length,
+      avgResolvedCount: normalizedHoldings.filter(
+        (holding) => holding.instrumentType !== "Cash" && holding.averagePrice > 0
+      ).length,
+      unresolvedAverageCount: normalizedHoldings.filter(
         (holding) => holding.instrumentType !== "Cash" && holding.currentPrice > 0 && holding.averagePrice <= 0
-      );
-
-      if (unresolvedAverage) {
-        console.debug("[Breeze Sync] Average price unresolved for sample", {
-          instrumentName: unresolvedAverage.instrumentName,
-          stockCode: unresolvedAverage.sourceStockCode,
-          currentPrice: unresolvedAverage.currentPrice,
-          averagePrice: unresolvedAverage.averagePrice
-        });
-      }
-
-      const postMergeSnapshot = normalizedHoldings
-        .filter((holding) => holding.instrumentType !== "Cash")
-        .slice(0, 20)
-        .map((holding) => ({
-          instrumentName: holding.instrumentName,
-          stockCode: holding.sourceStockCode || holding.__debugStockCode,
-          quantity: holding.quantity,
-          averagePrice: holding.averagePrice,
-          averagePriceSource: holding.averagePriceSource,
-          currentPrice: holding.currentPrice,
-          source: holding.__debugSource
-        }));
-
-      console.debug("[Breeze Sync] Post-merge holdings snapshot", {
-        totalHoldings: normalizedHoldings.length,
-        pricedCount: normalizedHoldings.filter(
-          (holding) => holding.instrumentType !== "Cash" && holding.currentPrice > 0
-        ).length,
-        avgResolvedCount: normalizedHoldings.filter(
-          (holding) => holding.instrumentType !== "Cash" && holding.averagePrice > 0
-        ).length,
-        sample: postMergeSnapshot
-      });
-    }
+      ).length
+    });
 
     for (const holding of normalizedHoldings) {
-      delete holding.__debugRawItem;
-      delete holding.__debugStockCode;
-      delete holding.__debugSource;
       delete holding.sourceStockCode;
       delete holding.averagePriceSource;
     }

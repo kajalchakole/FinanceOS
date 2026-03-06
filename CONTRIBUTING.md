@@ -37,6 +37,17 @@ We welcome issues, bug reports, documentation updates, feature proposals, and co
 5. Run tests and linters.
 6. Commit using clear, imperative messages.
 
+## Security checks before commit
+
+Enable the repository-managed git hooks:
+
+```bash
+chmod +x .githooks/pre-commit
+git config core.hooksPath .githooks
+```
+
+The pre-commit hook runs `gitleaks` on staged changes and blocks commits if potential secrets are detected.
+
 ## Pull request checklist
 
 Before opening a PR, ensure:

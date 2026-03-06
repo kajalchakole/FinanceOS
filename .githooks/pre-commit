@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed. Install it to run secret checks."
+  echo "pre-commit: https://github.com/gitleaks/gitleaks#installing"
+  exit 1
+fi
+
+if gitleaks git --help 2>/dev/null | grep -q -- "--staged"; then
+  gitleaks git --staged --redact --no-banner
+else
+  gitleaks protect --staged --redact --no-banner
+fi
