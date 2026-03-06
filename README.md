@@ -1,5 +1,11 @@
 # FinanceOS
 
+![License](https://img.shields.io/badge/license-AGPL%20v3-blue)
+![Status](https://img.shields.io/badge/status-active-success)
+![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen)
+![Built with Node.js](https://img.shields.io/badge/backend-Node.js-green)
+![Frontend](https://img.shields.io/badge/frontend-React-blue)
+
 FinanceOS is a self-hosted personal **Wealth Operating System** for people who want one private place to manage their full financial life.
 
 It combines investment tracking, real-world assets, liabilities, retirement accounts, and goal planning with practical intelligence features like allocation drift detection and opportunity analysis.
