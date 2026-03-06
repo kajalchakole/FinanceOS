@@ -31,7 +31,7 @@ This Code of Conduct applies within all community spaces and when an individual 
 
 ## Enforcement
 
-Report incidents to: `conduct@financeos.dev` (placeholder).
+Report incidents to: `financeos.project@gmail.com`.
 
 All reports will be reviewed and investigated promptly and fairly.
 

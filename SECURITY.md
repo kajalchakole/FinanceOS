@@ -12,7 +12,7 @@ Please **do not** open public GitHub issues for sensitive vulnerabilities.
 
 Instead, report privately via:
 
-- Security email: `security@financeos.dev` (placeholder)
+- Security email: `financeos.project@gmail.com`
 
 Include:
 

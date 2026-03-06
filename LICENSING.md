@@ -41,4 +41,4 @@ Commercial terms (when available) will be provided separately and will coexist w
 
 For commercial licensing or licensing questions, contact:
 
-**licensing@financeos.app**
+**financeos.project@gmail.com**

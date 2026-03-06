@@ -62,7 +62,7 @@ Most personal finance products optimize for growth through ads, upsells, and dat
 
 ### 1) Clone the repository
 ```bash
-git clone https://github.com/<your-org>/FinanceOS.git
+git clone https://github.com/kajalchakole/FinanceOS.git
 cd FinanceOS
 ```
 
