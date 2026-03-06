@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 
 import api from "../services/api";
 
@@ -17,7 +18,25 @@ function BrokerSyncDrawer({
   onRefreshBrokers
 }) {
   const [brokerUiState, setBrokerUiState] = useState({});
+  const [genericImportState, setGenericImportState] = useState({
+    file: null,
+    headers: [],
+    mapping: {},
+    isParsing: false,
+    isImporting: false,
+    error: ""
+  });
   const fileInputRefs = useRef({});
+  const genericFileInputRef = useRef(null);
+
+  const genericColumnFields = [
+    { key: "broker", label: "Broker", required: true, aliases: ["broker"] },
+    { key: "instrument_name", label: "Instrument Name", required: true, aliases: ["instrument_name", "instrument name", "name"] },
+    { key: "quantity", label: "Quantity", required: true, aliases: ["quantity", "qty", "units"] },
+    { key: "average_price", label: "Average Price", required: false, aliases: ["average_price", "average price", "avg price"] },
+    { key: "current_price", label: "Current Price", required: false, aliases: ["current_price", "current price", "price", "ltp"] },
+    { key: "instrument_type", label: "Instrument Type", required: false, aliases: ["instrument_type", "instrument type", "type"] }
+  ];
 
   const stateByBroker = useMemo(() => (
     brokers.reduce((accumulator, broker) => {
@@ -35,6 +54,149 @@ function BrokerSyncDrawer({
       ...current,
       [brokerName]: nextState
     }));
+  };
+
+  const toNormalized = (value) => String(value || "").trim().toLowerCase();
+
+  const getDefaultGenericMapping = (headers) => {
+    const normalizedByHeader = headers.reduce((accumulator, header) => {
+      accumulator[toNormalized(header)] = header;
+      return accumulator;
+    }, {});
+
+    return genericColumnFields.reduce((accumulator, field) => {
+      const matchedAlias = field.aliases.find((alias) => normalizedByHeader[toNormalized(alias)]);
+      if (matchedAlias) {
+        accumulator[field.key] = normalizedByHeader[toNormalized(matchedAlias)];
+      }
+      return accumulator;
+    }, {});
+  };
+
+  const parseHeadersFromFile = async (file) => {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
+    const rows = firstSheetName
+      ? XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { header: 1, defval: "" })
+      : [];
+    const firstRow = Array.isArray(rows[0]) ? rows[0] : [];
+
+    return firstRow
+      .map((header) => String(header || "").trim())
+      .filter(Boolean);
+  };
+
+  const handleGenericFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setGenericImportState({
+      file,
+      headers: [],
+      mapping: {},
+      isParsing: true,
+      isImporting: false,
+      error: ""
+    });
+
+    try {
+      const headers = await parseHeadersFromFile(file);
+      const mapping = getDefaultGenericMapping(headers);
+
+      setGenericImportState({
+        file,
+        headers,
+        mapping,
+        isParsing: false,
+        isImporting: false,
+        error: ""
+      });
+    } catch (requestError) {
+      setGenericImportState({
+        file: null,
+        headers: [],
+        mapping: {},
+        isParsing: false,
+        isImporting: false,
+        error: requestError?.message || "Unable to parse file headers."
+      });
+    }
+  };
+
+  const handleGenericMappingChange = (fieldKey, header) => {
+    setGenericImportState((current) => ({
+      ...current,
+      mapping: {
+        ...current.mapping,
+        [fieldKey]: header
+      }
+    }));
+  };
+
+  const handleGenericImport = async () => {
+    const { file, mapping } = genericImportState;
+
+    if (!file) {
+      setGenericImportState((current) => ({
+        ...current,
+        error: "Please upload a file."
+      }));
+      return;
+    }
+
+    const missingRequiredFields = genericColumnFields
+      .filter((field) => field.required)
+      .filter((field) => !mapping[field.key]);
+
+    if (missingRequiredFields.length > 0) {
+      setGenericImportState((current) => ({
+        ...current,
+        error: "Map all required columns before importing."
+      }));
+      return;
+    }
+
+    setGenericImportState((current) => ({
+      ...current,
+      isImporting: true,
+      error: ""
+    }));
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("mapping", JSON.stringify(mapping));
+
+      const response = await api.post("/import/generic", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      setGenericImportState({
+        file: null,
+        headers: [],
+        mapping: {},
+        isParsing: false,
+        isImporting: false,
+        error: ""
+      });
+
+      await onSyncSuccess(`Generic portfolio import successful (${response.data?.importedCount || 0} holdings)`);
+      await onRefreshBrokers();
+      onClose();
+    } catch (requestError) {
+      setGenericImportState((current) => ({
+        ...current,
+        isImporting: false,
+        error: requestError.response?.data?.message || "Generic portfolio import failed."
+      }));
+    }
   };
 
   const formatDateTime = (dateValue) => {
@@ -162,8 +324,8 @@ function BrokerSyncDrawer({
         aria-label="Close broker sync drawer backdrop"
       />
 
-      <aside className="h-full w-full max-w-md border-l border-brand-line bg-slate-100 p-6 shadow-soft">
-        <div className="flex items-center justify-between">
+      <aside className="flex h-full w-full max-w-md flex-col border-l border-brand-line bg-slate-100 p-4 shadow-soft sm:p-6">
+        <div className="flex shrink-0 items-center justify-between">
           <h3 className="text-lg font-semibold tracking-tight text-brand-text">Broker Sync Center</h3>
           <button
             type="button"
@@ -174,7 +336,7 @@ function BrokerSyncDrawer({
           </button>
         </div>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 flex-1 space-y-4 overflow-y-auto pb-6 pr-1">
           {brokers.map((broker) => {
             const brokerState = stateByBroker[broker.name] || { mode: "idle", message: "" };
             const shouldShowConnectOnly = !broker.connected || brokerState.mode === "expired" || brokerState.mode === "not_connected";
@@ -252,6 +414,71 @@ function BrokerSyncDrawer({
               </article>
             );
           })}
+
+          <article className="rounded-2xl border border-brand-line bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-brand-text">Generic Portfolio Import</p>
+                <p className="mt-1 text-xs text-brand-muted">Import holdings from any broker using CSV or Excel files.</p>
+                {genericImportState.file ? (
+                  <p className="mt-2 text-xs font-medium text-brand-text">Selected: {genericImportState.file.name}</p>
+                ) : null}
+                {genericImportState.error ? (
+                  <p className="mt-2 text-xs font-medium text-amber-700">{genericImportState.error}</p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={genericFileInputRef}
+                  type="file"
+                  accept=".csv,.xls,.xlsx"
+                  className="hidden"
+                  onChange={handleGenericFileSelect}
+                />
+                <button
+                  type="button"
+                  disabled={genericImportState.isParsing || genericImportState.isImporting}
+                  onClick={() => genericFileInputRef.current?.click()}
+                  className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {genericImportState.isParsing ? "Reading..." : "Upload File"}
+                </button>
+              </div>
+            </div>
+
+            {genericImportState.headers.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {genericColumnFields.map((field) => (
+                  <label key={field.key} className="block">
+                    <span className="text-xs font-medium text-brand-muted">
+                      {field.label}
+                      {field.required ? " *" : ""}
+                    </span>
+                    <select
+                      value={genericImportState.mapping[field.key] || ""}
+                      onChange={(event) => handleGenericMappingChange(field.key, event.target.value)}
+                      className="mt-1 w-full rounded-lg border border-brand-line bg-white px-3 py-2 text-sm text-brand-text focus:border-slate-400 focus:outline-none"
+                    >
+                      <option value="">{field.required ? "Select column" : "Skip"}</option>
+                      {genericImportState.headers.map((header) => (
+                        <option key={`${field.key}-${header}`} value={header}>{header}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={handleGenericImport}
+                  disabled={genericImportState.isImporting || genericImportState.isParsing}
+                  className="w-full rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {genericImportState.isImporting ? "Importing..." : "Import Holdings"}
+                </button>
+              </div>
+            ) : null}
+          </article>
         </div>
       </aside>
     </div>

@@ -46,12 +46,29 @@ Most personal finance products optimize for growth through ads, upsells, and dat
 
 ## Screenshots
 
-> Add screenshots and GIF walkthroughs before first public launch.
+### Setup
+![Setup](./docs/screenshots/Setup.png)
 
-- `docs/screenshots/dashboard.png` (placeholder)
-- `docs/screenshots/portfolio.png` (placeholder)
-- `docs/screenshots/goals.png` (placeholder)
-- `docs/screenshots/broker-sync.png` (placeholder)
+### PIN Login
+![PIN Login](./docs/screenshots/PIN_Login.png)
+
+### Dashboard
+![Dashboard](./docs/screenshots/Dashboard.png)
+
+### Portfolio
+![Portfolio](./docs/screenshots/Portfolio.png)
+
+### Goals
+![Goals](./docs/screenshots/Goals.png)
+
+### Create Goal
+![Create Goal](./docs/screenshots/CreateGoal.png)
+
+### Goal Detail
+![Goal Detail](./docs/screenshots/Goal.png)
+
+### Broker Sync Center
+![Broker Sync Center](./docs/screenshots/BrokerSync.png)
 
 ## Installation (local setup)
 
