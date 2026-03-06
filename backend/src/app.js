@@ -20,6 +20,7 @@ import physicalCommodityRouter from "./modules/physicalCommodities/physicalCommo
 import settingsRouter from "./modules/settings/settings.routes.js";
 import backupRouter from "./modules/backup/backup.routes.js";
 import auditLogRouter from "./modules/auditLogs/auditLog.routes.js";
+import importRouter from "./modules/import/import.routes.js";
 import cashAccountRouter from "./routes/cashAccounts.js";
 import liabilityRouter from "./routes/liabilities.js";
 import assetsRouter from "./routes/assets.js";
@@ -47,6 +48,7 @@ app.use("/api/holdings", holdingRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/brokers/hdfc_investright", hdfcRouter);
 app.use("/api/brokers", brokerRouter);
+app.use("/api/import", importRouter);
 app.use("/api/portfolio", portfolioRouter);
 app.use("/api/fixed-deposits", fixedDepositRouter);
 app.use("/api/epf", epfRouter);
