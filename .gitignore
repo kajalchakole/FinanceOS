@@ -10,6 +10,7 @@ frontend/package-lock.json
 backend/.env
 frontend/.env
 frontend/.env.*
+!frontend/.env.example
 
 # Build outputs
 backend/dist/
