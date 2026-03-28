@@ -10,6 +10,7 @@ import goalRouter from "./modules/goals/goal.routes.js";
 import dashboardRouter from "./modules/dashboard/dashboard.routes.js";
 import holdingRouter from "./modules/holdings/holding.routes.js";
 import brokerRouter from "./modules/brokers/broker.routes.js";
+import { handleBrokerCallback } from "./modules/brokers/broker.controller.js";
 import hdfcRouter from "./modules/brokers/hdfc_investright/hdfc.routes.js";
 import portfolioRouter from "./modules/portfolio/portfolio.routes.js";
 import fixedDepositRouter from "./modules/fixedDeposits/fixedDeposit.routes.js";
@@ -41,6 +42,8 @@ app.use(morgan("dev"));
 
 app.use(healthRouter);
 app.use("/api/auth", authRouter);
+app.get("/api/brokers/:broker/callback", handleBrokerCallback);
+app.post("/api/brokers/:broker/callback", handleBrokerCallback);
 app.use("/api", requireAuth);
 app.use("/api/goals/intelligence", goalsIntelligenceRouter);
 app.use("/api/goals", goalRouter);

@@ -1,7 +1,6 @@
 const brokerErrorMessages = {
   BROKER_SESSION_EXPIRED: "Session expired. Please reconnect.",
-  BROKER_NOT_CONNECTED: "Broker not connected. Please connect first.",
-  BROKER_SYNC_FAILED: "Broker sync failed."
+  BROKER_NOT_CONNECTED: "Broker not connected. Please connect first."
 };
 
 export const notFoundHandler = (req, res) => {
@@ -53,10 +52,10 @@ export const errorHandler = (err, req, res, next) => {
     }
 
     if (err.code === "BROKER_SYNC_FAILED") {
-      statusCode = 500;
+      statusCode = err.statusCode || statusCode;
     }
 
-    if (brokerErrorMessages[err.code]) {
+    if (brokerErrorMessages[err.code] && !err.message) {
       responsePayload.message = brokerErrorMessages[err.code];
     }
   }

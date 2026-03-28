@@ -126,17 +126,9 @@ export const syncKiteHoldings = async () => {
   console.info("[Kite Sync] Starting holdings sync for broker=kite");
 
   let response;
-  let mfResponse;
 
   try {
     response = await axios.get(KITE_HOLDINGS_URL, {
-      headers: {
-        Authorization: `token ${apiKey}:${brokerAuth.accessToken}`,
-        "X-Kite-Version": "3"
-      }
-    });
-
-    mfResponse = await axios.get(KITE_MF_HOLDINGS_URL, {
       headers: {
         Authorization: `token ${apiKey}:${brokerAuth.accessToken}`,
         "X-Kite-Version": "3"
@@ -154,8 +146,28 @@ export const syncKiteHoldings = async () => {
     throw brokerSyncFailedError("kite", `Kite holdings fetch failed: ${kiteMessage}`, 502);
   }
 
+  let mfHoldings = [];
+
+  try {
+    const mfResponse = await axios.get(KITE_MF_HOLDINGS_URL, {
+      headers: {
+        Authorization: `token ${apiKey}:${brokerAuth.accessToken}`,
+        "X-Kite-Version": "3"
+      }
+    });
+
+    mfHoldings = Array.isArray(mfResponse?.data?.data) ? mfResponse.data.data : [];
+  } catch (error) {
+    const kiteMessage = axios.isAxiosError(error)
+      ? error.response?.data?.message || error.message
+      : "Unknown error";
+
+    console.warn("[Kite Sync] MF holdings fetch failed; continuing with equity holdings only", {
+      message: kiteMessage
+    });
+  }
+
   const holdings = Array.isArray(response?.data?.data) ? response.data.data : [];
-  const mfHoldings = Array.isArray(mfResponse?.data?.data) ? mfResponse.data.data : [];
   const existingBrokerHoldings = await Holding.find(
     { broker: { $in: ["kite", "Zerodha"] } },
     { instrumentName: 1, instrumentType: 1, goalId: 1 }
