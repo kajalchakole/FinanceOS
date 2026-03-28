@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import { assetCategories } from "../models/Asset.js";
+import allocationTargets from "../config/allocationTargets.js";
 import {
   createAsset,
   deleteAsset,
@@ -51,6 +52,24 @@ const parseCategory = (value, { required = false } = {}) => {
   return value;
 };
 
+const allocationCategories = Object.keys(allocationTargets);
+const parseAllocationCategory = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = String(value).trim();
+  if (!parsed) {
+    return null;
+  }
+
+  if (!allocationCategories.includes(parsed)) {
+    throw badRequestError(`allocationCategory must be one of: ${allocationCategories.join(", ")}`);
+  }
+
+  return parsed;
+};
+
 const parsePurchaseDate = (value) => {
   if (value === undefined) {
     return undefined;
@@ -86,7 +105,8 @@ export const createAssetController = async (req, res, next) => {
       purchaseValue: parseNonNegativeNumber(req.body?.purchaseValue, "purchaseValue", { required: true }),
       currentValue: parseNonNegativeNumber(req.body?.currentValue, "currentValue", { required: true }),
       purchaseDate: parsePurchaseDate(req.body?.purchaseDate),
-      notes: req.body?.notes === undefined ? undefined : String(req.body.notes || "").trim()
+      notes: req.body?.notes === undefined ? undefined : String(req.body.notes || "").trim(),
+      allocationCategory: parseAllocationCategory(req.body?.allocationCategory)
     };
 
     const created = await createAsset(payload);
@@ -126,6 +146,10 @@ export const updateAssetController = async (req, res, next) => {
 
     if (req.body?.notes !== undefined) {
       updates.notes = String(req.body.notes || "").trim();
+    }
+
+    if (req.body?.allocationCategory !== undefined) {
+      updates.allocationCategory = parseAllocationCategory(req.body.allocationCategory);
     }
 
     const updated = await updateAsset(req.params.id, updates);

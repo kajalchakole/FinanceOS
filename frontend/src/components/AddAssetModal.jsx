@@ -1,6 +1,7 @@
 import React from "react";
 
 const assetCategories = ["Real Estate", "Vehicle", "Cash", "Business", "Other"];
+const allocationCategories = ["Equity", "Debt", "Gold", "Cash", "Opportunity"];
 
 function AddAssetModal({
   isOpen,
@@ -48,6 +49,21 @@ function AddAssetModal({
                 className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
               >
                 {assetCategories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm text-brand-text">
+              <span>Allocation Category</span>
+              <select
+                name="allocationCategory"
+                value={formData.allocationCategory}
+                onChange={onChange}
+                className="w-full rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text outline-none ring-0 focus:border-slate-400"
+              >
+                <option value="">Auto classify</option>
+                {allocationCategories.map((category) => (
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>

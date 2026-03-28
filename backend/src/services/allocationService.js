@@ -43,6 +43,11 @@ const isGoldHolding = (holding) => {
 };
 
 const classifyHolding = (holding) => {
+  const taggedCategory = String(holding.allocationCategory || "").trim();
+  if (taggedCategory && allocationTargets[taggedCategory] !== undefined) {
+    return taggedCategory;
+  }
+
   const type = normalizeText(holding.instrumentType);
   const name = normalizeText(holding.instrumentName);
 
@@ -78,6 +83,11 @@ const classifyHolding = (holding) => {
 };
 
 const classifyAsset = (asset) => {
+  const taggedCategory = String(asset.allocationCategory || "").trim();
+  if (taggedCategory && allocationTargets[taggedCategory] !== undefined) {
+    return taggedCategory;
+  }
+
   const category = normalizeText(asset.category);
   const name = normalizeText(asset.name);
 

@@ -7,6 +7,7 @@ import api from "../services/api";
 const defaultFormData = {
   name: "",
   category: "Real Estate",
+  allocationCategory: "",
   purchaseValue: "",
   currentValue: "",
   purchaseDate: "",
@@ -88,6 +89,7 @@ function AssetsPage() {
     setFormData({
       name: asset.name || "",
       category: asset.category || "Real Estate",
+      allocationCategory: asset.allocationCategory || "",
       purchaseValue: String(asset.purchaseValue ?? ""),
       currentValue: String(asset.currentValue ?? ""),
       purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().slice(0, 10) : "",
@@ -132,6 +134,7 @@ function AssetsPage() {
         name: String(formData.name || "").trim(),
         purchaseValue: Number(formData.purchaseValue),
         currentValue: Number(formData.currentValue),
+        allocationCategory: formData.allocationCategory || null,
         purchaseDate: formData.purchaseDate || null,
         notes: String(formData.notes || "").trim()
       };

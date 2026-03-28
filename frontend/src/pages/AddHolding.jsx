@@ -8,11 +8,13 @@ const initialFormState = {
   broker: "manual",
   instrumentName: "",
   instrumentType: "",
+  allocationCategory: "",
   quantity: "",
   averagePrice: "",
   currentPrice: "",
   goalId: ""
 };
+const allocationCategories = ["Equity", "Debt", "Gold", "Cash", "Opportunity"];
 
 function AddHoldingPage() {
   const { id } = useParams();
@@ -57,6 +59,7 @@ function AddHoldingPage() {
           broker: holding.broker || "",
           instrumentName: holding.instrumentName || "",
           instrumentType: holding.instrumentType || "",
+          allocationCategory: holding.allocationCategory || "",
           quantity: holding.quantity?.toString() || "",
           averagePrice: holding.averagePrice?.toString() || "",
           currentPrice: holding.currentPrice?.toString() || "",
@@ -90,6 +93,7 @@ function AddHoldingPage() {
         broker: formData.broker.trim(),
         instrumentName: formData.instrumentName.trim(),
         instrumentType: formData.instrumentType.trim(),
+        allocationCategory: formData.allocationCategory || null,
         quantity: Number(formData.quantity),
         averagePrice: Number(formData.averagePrice),
         currentPrice: Number(formData.currentPrice),
@@ -165,6 +169,21 @@ function AddHoldingPage() {
               className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
               placeholder="e.g. ETF"
             />
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-brand-text">Allocation Category</span>
+            <select
+              name="allocationCategory"
+              value={formData.allocationCategory}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-brand-line px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+            >
+              <option value="">Auto classify</option>
+              {allocationCategories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
           </label>
 
           <label className="space-y-2">

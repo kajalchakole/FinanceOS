@@ -2,6 +2,7 @@ import Holding from "./holding.model.js";
 import mongoose from "mongoose";
 import { getBrokerDisplayName } from "../brokers/broker.registry.js";
 import { applyCommonMarketPrices } from "../market/marketPrice.service.js";
+import allocationTargets from "../../config/allocationTargets.js";
 
 const notFoundError = (message) => {
   const error = new Error(message);
@@ -21,6 +22,23 @@ const badRequestError = (message) => {
 };
 
 const parseBoolean = (value) => ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
+const allocationCategories = Object.keys(allocationTargets);
+const parseAllocationCategory = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = String(value).trim();
+  if (!parsed) {
+    return null;
+  }
+
+  if (!allocationCategories.includes(parsed)) {
+    throw badRequestError(`allocationCategory must be one of: ${allocationCategories.join(", ")}`);
+  }
+
+  return parsed;
+};
 
 const enrichHoldingMetrics = (holding) => {
   const quantity = Number(holding?.quantity || 0);
@@ -43,7 +61,12 @@ const enrichHoldingMetrics = (holding) => {
 
 export const createHolding = async (req, res, next) => {
   try {
-    const holding = await Holding.create(req.body);
+    const payload = {
+      ...req.body,
+      allocationCategory: parseAllocationCategory(req.body?.allocationCategory)
+    };
+
+    const holding = await Holding.create(payload);
     const populatedHolding = await Holding.findById(holding._id).populate(holdingPopulate);
     res.status(201).json(enrichHoldingMetrics(populatedHolding.toObject()));
   } catch (error) {
@@ -85,7 +108,15 @@ export const getHoldingById = async (req, res, next) => {
 
 export const updateHolding = async (req, res, next) => {
   try {
-    const holding = await Holding.findByIdAndUpdate(req.params.id, req.body, {
+    const updates = {
+      ...req.body
+    };
+
+    if (req.body?.allocationCategory !== undefined) {
+      updates.allocationCategory = parseAllocationCategory(req.body.allocationCategory);
+    }
+
+    const holding = await Holding.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true
     }).populate(holdingPopulate);

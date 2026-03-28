@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
+import allocationTargets from "../config/allocationTargets.js";
 
 const assetCategories = ["Real Estate", "Vehicle", "Gold", "Cash", "Business", "Other"];
+const allocationCategories = Object.keys(allocationTargets);
+const normalizeAllocationCategory = (value) => {
+  const parsed = String(value || "").trim();
+  return parsed ? parsed : null;
+};
 
 const assetSchema = new mongoose.Schema({
   name: {
@@ -29,6 +35,12 @@ const assetSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
+  },
+  allocationCategory: {
+    type: String,
+    enum: allocationCategories,
+    default: null,
+    set: normalizeAllocationCategory
   },
   createdAt: {
     type: Date,

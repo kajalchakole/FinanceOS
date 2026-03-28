@@ -1,4 +1,11 @@
 import mongoose from "mongoose";
+import allocationTargets from "../../config/allocationTargets.js";
+
+const allocationCategories = Object.keys(allocationTargets);
+const normalizeAllocationCategory = (value) => {
+  const parsed = String(value || "").trim();
+  return parsed ? parsed : null;
+};
 
 const holdingSchema = new mongoose.Schema({
   broker: {
@@ -42,6 +49,12 @@ const holdingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Goal",
     default: null
+  },
+  allocationCategory: {
+    type: String,
+    enum: allocationCategories,
+    default: null,
+    set: normalizeAllocationCategory
   },
   createdAt: {
     type: Date,
