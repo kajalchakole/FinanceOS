@@ -164,6 +164,32 @@ export const bulkAssignHoldings = async (req, res, next) => {
   }
 };
 
+export const bulkDeleteHoldings = async (req, res, next) => {
+  try {
+    const { holdingIds } = req.body;
+
+    if (!Array.isArray(holdingIds) || holdingIds.length === 0) {
+      throw badRequestError("holdingIds must be a non-empty array");
+    }
+
+    const uniqueHoldingIds = [...new Set(holdingIds)];
+    const hasInvalidHoldingId = uniqueHoldingIds.some((holdingId) => !mongoose.Types.ObjectId.isValid(holdingId));
+
+    if (hasInvalidHoldingId) {
+      throw badRequestError("holdingIds contains invalid id");
+    }
+
+    const deleteResult = await Holding.deleteMany({ _id: { $in: uniqueHoldingIds } });
+
+    res.status(200).json({
+      message: "Holdings deleted",
+      deletedCount: deleteResult.deletedCount || 0
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteHolding = async (req, res, next) => {
   try {
     const holding = await Holding.findByIdAndDelete(req.params.id);

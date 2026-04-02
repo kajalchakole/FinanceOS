@@ -21,8 +21,10 @@ function HoldingsPage() {
   const [selectedHoldingIds, setSelectedHoldingIds] = useState([]);
   const [bulkGoalSelection, setBulkGoalSelection] = useState("");
   const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [bulkActionError, setBulkActionError] = useState("");
   const [bulkAssignmentPending, setBulkAssignmentPending] = useState(null);
+  const [bulkDeletePending, setBulkDeletePending] = useState(null);
   const [sortConfig, setSortConfig] = useState({
     key: "instrumentName",
     direction: "asc"
@@ -249,12 +251,32 @@ function HoldingsPage() {
     });
   };
 
+  const handleBulkDelete = () => {
+    if (selectedHoldingIds.length === 0) {
+      setBulkActionError("Please select at least one holding.");
+      return;
+    }
+
+    setBulkActionError("");
+    setBulkDeletePending({
+      holdingIds: [...selectedHoldingIds]
+    });
+  };
+
   const closeBulkAssignModal = () => {
     if (isBulkAssigning) {
       return;
     }
 
     setBulkAssignmentPending(null);
+  };
+
+  const closeBulkDeleteModal = () => {
+    if (isBulkDeleting) {
+      return;
+    }
+
+    setBulkDeletePending(null);
   };
 
   const handleConfirmBulkAssignment = async () => {
@@ -280,6 +302,35 @@ function HoldingsPage() {
       setBulkActionError(requestError.response?.data?.message || "Unable to update holdings");
     } finally {
       setIsBulkAssigning(false);
+    }
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    if (!bulkDeletePending) {
+      return;
+    }
+
+    setError("");
+    setIsBulkDeleting(true);
+
+    try {
+      await api.delete("/holdings/bulk", {
+        data: {
+          holdingIds: bulkDeletePending.holdingIds
+        }
+      });
+
+      setHoldings((currentHoldings) => (
+        currentHoldings.filter((holding) => !bulkDeletePending.holdingIds.includes(holding._id))
+      ));
+      setSelectedHoldingIds([]);
+      setBulkGoalSelection("");
+      setBulkDeletePending(null);
+      refreshDashboard();
+    } catch (requestError) {
+      setBulkActionError(requestError.response?.data?.message || "Unable to delete holdings");
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -436,7 +487,7 @@ function HoldingsPage() {
               <select
                 value={bulkGoalSelection}
                 onChange={handleBulkGoalChange}
-                disabled={isBulkAssigning}
+                disabled={isBulkAssigning || isBulkDeleting}
                 className="rounded-xl border border-brand-line bg-white px-3 py-2 text-sm text-brand-text focus:border-slate-400 focus:outline-none"
               >
                 <option value="">Assign selected to...</option>
@@ -449,10 +500,19 @@ function HoldingsPage() {
               <button
                 type="button"
                 onClick={handleApplyBulkAssignment}
-                disabled={isBulkAssigning || !bulkGoalSelection}
+                disabled={isBulkAssigning || isBulkDeleting || !bulkGoalSelection}
                 className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isBulkAssigning ? "Applying..." : "Apply"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={isBulkAssigning || isBulkDeleting || selectedCount === 0}
+                className="rounded-xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isBulkDeleting ? "Deleting..." : "Delete Selected"}
               </button>
 
               <button
@@ -462,7 +522,7 @@ function HoldingsPage() {
                   setBulkGoalSelection("");
                   setBulkActionError("");
                 }}
-                disabled={isBulkAssigning}
+                disabled={isBulkAssigning || isBulkDeleting}
                 className="rounded-xl border border-brand-line px-3 py-2 text-sm font-semibold text-brand-muted transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Clear
@@ -494,7 +554,7 @@ function HoldingsPage() {
                       type="checkbox"
                       checked={filteredHoldings.length > 0 && filteredHoldings.every((holding) => selectedHoldingIds.includes(holding._id))}
                       onChange={handleSelectAll}
-                      disabled={isBulkAssigning}
+                      disabled={isBulkAssigning || isBulkDeleting}
                       aria-label="Select all holdings"
                     />
                   </th>
@@ -550,7 +610,7 @@ function HoldingsPage() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleHoldingSelection(holding._id)}
-                          disabled={isBulkAssigning}
+                          disabled={isBulkAssigning || isBulkDeleting}
                           aria-label={`Select ${holding.instrumentName}`}
                         />
                       </td>
@@ -576,7 +636,7 @@ function HoldingsPage() {
                           <button
                             type="button"
                             onClick={() => handleDeleteHolding(holding)}
-                            disabled={deletingHoldingId === holding._id || isBulkAssigning}
+                            disabled={deletingHoldingId === holding._id || isBulkAssigning || isBulkDeleting}
                             className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {deletingHoldingId === holding._id ? "Deleting..." : "Delete"}
@@ -619,6 +679,21 @@ function HoldingsPage() {
         onCancel={closeBulkAssignModal}
         onConfirm={handleConfirmBulkAssignment}
         ariaLabelledBy="bulk-assign-title"
+      />
+
+      <ConfirmationModal
+        isOpen={Boolean(bulkDeletePending)}
+        title="Delete Selected Holdings"
+        message={bulkDeletePending
+          ? `Delete ${bulkDeletePending.holdingIds.length} selected holding(s)? This action cannot be undone.`
+          : ""}
+        confirmLabel="Delete"
+        variant="danger"
+        isProcessing={isBulkDeleting}
+        errorMessage={bulkActionError}
+        onCancel={closeBulkDeleteModal}
+        onConfirm={handleConfirmBulkDelete}
+        ariaLabelledBy="bulk-delete-title"
       />
     </section>
   );
